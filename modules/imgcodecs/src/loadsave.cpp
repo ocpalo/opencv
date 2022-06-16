@@ -1032,6 +1032,61 @@ bool haveImageWriter( const String& filename )
     return !encoder.empty();
 }
 
+CV_WRAP size_t ImageCollection::nimages() const { return m_mats.size(); }
+
+CV_WRAP ImageCollection::Iterator ImageCollection::begin() const {
+    return Iterator(&m_mats[0]);
+}
+
+CV_WRAP ImageCollection::Iterator ImageCollection::end() const {
+    return Iterator(&m_mats[m_mats.size()]);
+}
+
+CV_WRAP ImageCollection ImageCollection::fromMultiPageImage(const std::string& img, int flags) {
+    std::vector<Mat> mats;
+    bool result = imreadmulti(img, mats, flags);
+    if(!result) {
+        throw cv::Exception(0, String("Reading image file failed"), "", __FILE__, __LINE__);
+    }
+
+    return ImageCollection(mats);
+}
+
+ImageCollection::ImageCollection(std::vector<Mat>& mats) : m_mats(mats), m_size(mats.size()) {
+}
+
+/*
+CV_WRAP static ImageCollection ImageCollection::fromDirectory(const std::string& dir, int flags)
+{
+
+}
+ */
+/*
+ImageIterator::ImageIterator(Mat *ptr) : m_ptr(ptr){}
+
+Mat ImageIterator::operator*() const {
+    return *m_ptr;
+}
+
+Mat* ImageIterator::operator->() const {
+    return m_ptr;
+}
+
+ImageIterator& ImageIterator::operator++() {
+    m_ptr++;
+    return *this;
+}
+
+ImageIterator ImageIterator::operator++(int) { ImageIterator tmp = *this; ++(*this); return tmp; }
+
+bool ImageIterator::operator!=(ImageIterator const& other) {
+    return other.m_ptr != this->m_ptr;
+}
+
+bool ImageIterator::operator==(const ImageIterator &other) {
+    return !(this->operator!=(other));
+}
+*/
 }
 
 /* End of file. */

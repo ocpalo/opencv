@@ -333,6 +333,45 @@ CV_EXPORTS_W bool haveImageReader( const String& filename );
 CV_EXPORTS_W bool haveImageWriter( const String& filename );
 
 
+class CV_EXPORTS ImageCollection {
+    std::vector<Mat> m_mats;
+    size_t m_size;
+    explicit ImageCollection(std::vector<Mat>& mats);
+
+public:
+
+    struct Iterator
+    {
+        using iterator_category = std::forward_iterator_tag;
+        using difference_type   = std::ptrdiff_t;
+        using value_type        = cv::Mat const;
+        using pointer           = cv::Mat const*;
+        using reference         = cv::Mat const&;
+
+        explicit Iterator(pointer ptr) : m_ptr(ptr) {}
+
+        //explicit Iterator(const value_type *pMat) : m_ptr(const_cast<pointer>(pMat)) {
+        //}
+
+        reference operator*() const { return *m_ptr; }
+        pointer operator->() { return m_ptr; }
+        Iterator& operator++() { m_ptr++; return *this; }
+        Iterator operator++(int) { Iterator tmp = *this; ++(*this); return tmp; }
+        friend bool operator== (const Iterator& a, const Iterator& b) { return a.m_ptr == b.m_ptr; };
+        friend bool operator!= (const Iterator& a, const Iterator& b) { return a.m_ptr != b.m_ptr; };
+        friend std::ostream& operator<<(std::ostream& ostream, Iterator const& o) { ostream<<o.m_ptr; return ostream;}
+
+    private:
+        pointer m_ptr;
+    };
+
+    CV_WRAP size_t nimages() const;
+    CV_WRAP Iterator begin() const;
+    Iterator end() const;
+
+    CV_WRAP static ImageCollection fromMultiPageImage(const std::string& img, int flags);
+};
+
 //! @} imgcodecs
 
 } // cv

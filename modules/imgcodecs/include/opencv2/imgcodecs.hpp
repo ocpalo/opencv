@@ -371,6 +371,8 @@ public:
      */
 
     CV_WRAP size_t nimages() const;
+    Mat operator[](int index) const;
+    CV_WRAP Mat at(int index) const;
     //CV_WRAP Iterator begin() const;
     //Iterator end() const;
 

@@ -54,6 +54,8 @@
 #include <cerrno>
 #include <opencv2/core/utils/logger.hpp>
 #include <opencv2/core/utils/configuration.private.hpp>
+#include <opencv2/imgcodecs.hpp>
+
 
 
 /****************************************************************************************\
@@ -1049,7 +1051,7 @@ CV_WRAP ImageCollection ImageCollection::fromMultiPageImage(const std::string& i
     ImageDecoder decoder;
 
 #ifdef HAVE_GDAL
-        if (flags != IMREAD_UNCHANGED && (flags & IMREAD_LOAD_GDAL) == IMREAD_LOAD_GDAL) {
+    if (flags != IMREAD_UNCHANGED && (flags & IMREAD_LOAD_GDAL) == IMREAD_LOAD_GDAL) {
         decoder = GdalDecoder().newDecoder();
     }
     else {
@@ -1067,16 +1069,43 @@ CV_WRAP ImageCollection ImageCollection::fromMultiPageImage(const std::string& i
                                 __LINE__);
         }
 
+        decoder->setSource(img);
+
+        if (!decoder->readHeader())
+            throw cv::Exception(1, "Could not read image header" + img,
+                                String("ImageCollection::fromMultiPageImage"),
+                                __FILE__,
+                                __LINE__);
+
+
         size_t count = 1;
         while(decoder->nextPage()) count++;
 
-    return ImageCollection(img, count, flags);
+    return ImageCollection(img, flags, count);
 }
 
 ImageCollection::ImageCollection(String filename, int flags, size_t size) : m_filename(filename),
                                                                             m_flags(flags),
                                                                             m_size(size){}
 
+Mat ImageCollection::at(int index) const {
+    if(index < 0 || index >= m_size)
+        throw cv::Exception(0,
+                            "Range out of bounds",
+                            "ImageCollection::at function",
+                            __FILE__,
+                            __LINE__);
+
+    std::vector<Mat> mat;
+    imreadmulti_(m_filename, m_flags, mat, index, 1);
+    return mat[0];
+}
+
+Mat ImageCollection::operator[](int index) const {
+    std::vector<Mat> mat;
+    imreadmulti_(m_filename, m_flags, mat, index, 1);
+    return mat[0];
+}
 /*
 CV_WRAP static ImageCollection ImageCollection::fromDirectory(const std::string& dir, int flags)
 {

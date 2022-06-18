@@ -1095,10 +1095,8 @@ Mat ImageCollection::at(int index) const {
                             "ImageCollection::at function",
                             __FILE__,
                             __LINE__);
-
-    std::vector<Mat> mat;
-    imreadmulti_(m_filename, m_flags, mat, index, 1);
-    return mat[0];
+    
+    return operator[](index);
 }
 
 Mat ImageCollection::operator[](int index) const {

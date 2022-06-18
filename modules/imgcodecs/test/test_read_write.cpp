@@ -303,17 +303,11 @@ TEST(Imgcodecs_Image, write_umat)
     EXPECT_EQ(0, remove(dst_name.c_str()));
 }
 
-#include <iostream>
-
-TEST(ImgCollection, read_tiff)
+TEST(ImgCollection, read_tiff_multipage)
 {
-    const string src_name = TS::ptr()->get_data_path() + "readwrite/non_tiled.tif";
+    const string src_name = TS::ptr()->get_data_path() + "readwrite/multipage_p1.tif";
     ImageCollection collection = ImageCollection::fromMultiPageImage(src_name, IMREAD_ANYCOLOR);
-    EXPECT_EQ(1, collection.nimages());
-
-    auto iter = collection.begin();
-    iter++;
-    ASSERT_TRUE(iter == collection.end());
+    EXPECT_EQ(4, collection.nimages());
 }
 
 }} // namespace

@@ -332,14 +332,17 @@ CV_EXPORTS_W bool haveImageReader( const String& filename );
  */
 CV_EXPORTS_W bool haveImageWriter( const String& filename );
 
-
 class CV_EXPORTS ImageCollection {
-    std::vector<Mat> m_mats;
+    String m_filename;
+    int m_flags;
     size_t m_size;
-    explicit ImageCollection(std::vector<Mat>& mats);
+
+private:
+    explicit ImageCollection(String filename, int flags, size_t size);
 
 public:
 
+    /*
     struct Iterator
     {
         using iterator_category = std::forward_iterator_tag;
@@ -365,9 +368,11 @@ public:
         pointer m_ptr;
     };
 
+     */
+
     CV_WRAP size_t nimages() const;
-    CV_WRAP Iterator begin() const;
-    Iterator end() const;
+    //CV_WRAP Iterator begin() const;
+    //Iterator end() const;
 
     CV_WRAP static ImageCollection fromMultiPageImage(const std::string& img, int flags);
 };

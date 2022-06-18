@@ -1032,8 +1032,9 @@ bool haveImageWriter( const String& filename )
     return !encoder.empty();
 }
 
-CV_WRAP size_t ImageCollection::nimages() const { return m_mats.size(); }
+CV_WRAP size_t ImageCollection::nimages() const { return m_size; }
 
+/*
 CV_WRAP ImageCollection::Iterator ImageCollection::begin() const {
     return Iterator(&m_mats[0]);
 }
@@ -1041,19 +1042,40 @@ CV_WRAP ImageCollection::Iterator ImageCollection::begin() const {
 CV_WRAP ImageCollection::Iterator ImageCollection::end() const {
     return Iterator(&m_mats[m_mats.size()]);
 }
+*/
 
 CV_WRAP ImageCollection ImageCollection::fromMultiPageImage(const std::string& img, int flags) {
-    std::vector<Mat> mats;
-    bool result = imreadmulti(img, mats, flags);
-    if(!result) {
-        throw cv::Exception(0, String("Reading image file failed"), "", __FILE__, __LINE__);
+
+    ImageDecoder decoder;
+
+#ifdef HAVE_GDAL
+        if (flags != IMREAD_UNCHANGED && (flags & IMREAD_LOAD_GDAL) == IMREAD_LOAD_GDAL) {
+        decoder = GdalDecoder().newDecoder();
     }
+    else {
+#endif
+        decoder = findDecoder(img);
+#ifdef HAVE_GDAL
+        }
+#endif
 
-    return ImageCollection(mats);
+        /// if no decoder was found, return nothing.
+        if (!decoder) {
+            throw cv::Exception(1, "No Encoder found for the file named" + img,
+                                String("ImageCollection::fromMultiPageImage"),
+                                __FILE__,
+                                __LINE__);
+        }
+
+        size_t count = 1;
+        while(decoder->nextPage()) count++;
+
+    return ImageCollection(img, count, flags);
 }
 
-ImageCollection::ImageCollection(std::vector<Mat>& mats) : m_mats(mats), m_size(mats.size()) {
-}
+ImageCollection::ImageCollection(String filename, int flags, size_t size) : m_filename(filename),
+                                                                            m_flags(flags),
+                                                                            m_size(size){}
 
 /*
 CV_WRAP static ImageCollection ImageCollection::fromDirectory(const std::string& dir, int flags)

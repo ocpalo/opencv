@@ -1036,15 +1036,22 @@ bool haveImageWriter( const String& filename )
 
 CV_WRAP size_t ImageCollection::nimages() const { return m_size; }
 
-/*
-CV_WRAP ImageCollection::Iterator ImageCollection::begin() const {
-    return Iterator(&m_mats[0]);
+
+CV_WRAP ImageCollection::Iterator ImageCollection::begin() {
+
+    if(m_data[0].empty()) {
+        std::vector<Mat> tmp;
+        imreadmulti_(m_filename, m_flags, tmp, 0, 1);
+        m_data[0] = tmp[0];
+    }
+
+    return Iterator(&m_data[0], m_filename, m_flags, m_size);
 }
 
-CV_WRAP ImageCollection::Iterator ImageCollection::end() const {
-    return Iterator(&m_mats[m_mats.size()]);
+CV_WRAP ImageCollection::Iterator ImageCollection::end() {
+    return Iterator(&m_data[m_data.size() - 1], m_filename, m_flags, m_size);
 }
-*/
+
 
 CV_WRAP ImageCollection ImageCollection::fromMultiPageImage(const std::string& img, int flags) {
 
@@ -1086,9 +1093,10 @@ CV_WRAP ImageCollection ImageCollection::fromMultiPageImage(const std::string& i
 
 ImageCollection::ImageCollection(String filename, int flags, size_t size) : m_filename(filename),
                                                                             m_flags(flags),
-                                                                            m_size(size){}
+                                                                            m_size(size),
+                                                                            m_data(size + 1){}
 
-Mat ImageCollection::at(int index) const {
+Mat ImageCollection::at(int index) {
     if(index < 0 || index >= m_size)
         throw cv::Exception(0,
                             "Range out of bounds",
@@ -1099,10 +1107,40 @@ Mat ImageCollection::at(int index) const {
     return operator[](index);
 }
 
-Mat ImageCollection::operator[](int index) const {
-    std::vector<Mat> mat;
-    imreadmulti_(m_filename, m_flags, mat, index, 1);
-    return mat[0];
+void ImageCollection::free(int index) {
+    if(index < 0 || index >= m_size)
+        throw cv::Exception(0,
+                            "Range out of bounds",
+                            "ImageCollection::at function",
+                            __FILE__,
+                            __LINE__);
+
+    m_data[index].release();
+}
+
+Mat ImageCollection::operator[](int index) {
+    if(m_data[index].empty()) {
+        std::vector<Mat> mat;
+        imreadmulti_(m_filename, m_flags, mat, index, 1);
+        m_data[index] = mat[0];
+    }
+    return m_data[index];
+}
+
+ImageCollection::Iterator& ImageCollection::Iterator::operator++() {
+    m_ptr++;
+    if(m_ptr->empty()) {
+        std::vector<Mat> tmp;
+        imreadmulti_(m_filename, m_flags, tmp, 0, 1);
+        *m_ptr = tmp[0];
+    }
+    return *this;
+}
+
+ImageCollection::Iterator ImageCollection::Iterator::operator++(int) {
+    Iterator tmp = *this;
+    ++(*this);
+    return *this;
 }
 
 }

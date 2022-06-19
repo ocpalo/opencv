@@ -43,6 +43,8 @@
 #ifndef OPENCV_IMGCODECS_HPP
 #define OPENCV_IMGCODECS_HPP
 
+#include <utility>
+
 #include "opencv2/core.hpp"
 
 /**
@@ -336,19 +338,54 @@ class CV_EXPORTS ImageCollection {
     String m_filename;
     int m_flags;
     size_t m_size;
+    std::vector<Mat> m_data;
 
 private:
     explicit ImageCollection(String filename, int flags, size_t size);
 
 public:
 
+    struct Iterator;
+
     CV_WRAP size_t nimages() const;
-    Mat operator[](int index) const;
-    CV_WRAP Mat at(int index) const;
-    //CV_WRAP Iterator begin() const;
-    //Iterator end() const;
+    Mat operator[](int index);
+    CV_WRAP Mat at(int index);
+    CV_WRAP void free(int index);
+    CV_WRAP Iterator begin();
+    CV_WRAP Iterator end();
 
     CV_WRAP static ImageCollection fromMultiPageImage(const std::string& img, int flags);
+
+    struct Iterator
+    {
+        using iterator_category = std::forward_iterator_tag;
+        using difference_type   = std::ptrdiff_t;
+        using value_type        = cv::Mat;
+        using pointer           = cv::Mat*;
+        using reference         = cv::Mat&;
+
+        explicit Iterator(pointer ptr, String filename, int flags, int size) :
+        m_ptr(ptr),
+        m_filename(std::move(filename)),
+        m_flags(flags),
+        m_size(size),
+        m_index(0) {}
+
+        reference operator*() const { return *m_ptr; }
+        pointer operator->() { return m_ptr; }
+        Iterator& operator++();
+        Iterator operator++(int);
+        friend bool operator== (const Iterator& a, const Iterator& b) { return a.m_ptr == b.m_ptr; };
+        friend bool operator!= (const Iterator& a, const Iterator& b) { return a.m_ptr != b.m_ptr; };
+        friend std::ostream& operator<<(std::ostream& ostream, Iterator const& o) { ostream<<o.m_ptr; return ostream;}
+
+    private:
+        pointer m_ptr;
+        String m_filename;
+        int m_flags;
+        size_t m_size;
+        int m_index;
+    };
 };
 
 //! @} imgcodecs

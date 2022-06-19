@@ -319,4 +319,24 @@ TEST(ImgCollection, read_single_tiff_page)
     EXPECT_EQ(collection.at(3).rows, 1010);
     EXPECT_EQ(collection[3].rows, 1010);
 }
+
+TEST(ImgCollection, read_tiff_iterator)
+{
+    const string src_name = TS::ptr()->get_data_path() + "readwrite/multipage.tif";
+    ImageCollection collection = ImageCollection::fromMultiPageImage(src_name, IMREAD_ANYCOLOR);
+
+    auto beg = collection.begin();
+    ASSERT_FALSE(beg->empty());
+
+    for(auto& i : collection) {
+        ASSERT_FALSE(i.empty());
+    }
+
+    // This works as intended but there is no way to test this other than with debugger.
+    // operator[] and .at(index) method reads the image into m_data.
+    for(int i = 0 ; i < collection.nimages(); ++i) {
+        collection.free(i);
+    }
+}
+
 }} // namespace

@@ -1104,38 +1104,7 @@ Mat ImageCollection::operator[](int index) const {
     imreadmulti_(m_filename, m_flags, mat, index, 1);
     return mat[0];
 }
-/*
-CV_WRAP static ImageCollection ImageCollection::fromDirectory(const std::string& dir, int flags)
-{
 
-}
- */
-/*
-ImageIterator::ImageIterator(Mat *ptr) : m_ptr(ptr){}
-
-Mat ImageIterator::operator*() const {
-    return *m_ptr;
-}
-
-Mat* ImageIterator::operator->() const {
-    return m_ptr;
-}
-
-ImageIterator& ImageIterator::operator++() {
-    m_ptr++;
-    return *this;
-}
-
-ImageIterator ImageIterator::operator++(int) { ImageIterator tmp = *this; ++(*this); return tmp; }
-
-bool ImageIterator::operator!=(ImageIterator const& other) {
-    return other.m_ptr != this->m_ptr;
-}
-
-bool ImageIterator::operator==(const ImageIterator &other) {
-    return !(this->operator!=(other));
-}
-*/
 }
 
 /* End of file. */

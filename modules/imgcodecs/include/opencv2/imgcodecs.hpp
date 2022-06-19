@@ -342,34 +342,6 @@ private:
 
 public:
 
-    /*
-    struct Iterator
-    {
-        using iterator_category = std::forward_iterator_tag;
-        using difference_type   = std::ptrdiff_t;
-        using value_type        = cv::Mat const;
-        using pointer           = cv::Mat const*;
-        using reference         = cv::Mat const&;
-
-        explicit Iterator(pointer ptr) : m_ptr(ptr) {}
-
-        //explicit Iterator(const value_type *pMat) : m_ptr(const_cast<pointer>(pMat)) {
-        //}
-
-        reference operator*() const { return *m_ptr; }
-        pointer operator->() { return m_ptr; }
-        Iterator& operator++() { m_ptr++; return *this; }
-        Iterator operator++(int) { Iterator tmp = *this; ++(*this); return tmp; }
-        friend bool operator== (const Iterator& a, const Iterator& b) { return a.m_ptr == b.m_ptr; };
-        friend bool operator!= (const Iterator& a, const Iterator& b) { return a.m_ptr != b.m_ptr; };
-        friend std::ostream& operator<<(std::ostream& ostream, Iterator const& o) { ostream<<o.m_ptr; return ostream;}
-
-    private:
-        pointer m_ptr;
-    };
-
-     */
-
     CV_WRAP size_t nimages() const;
     Mat operator[](int index) const;
     CV_WRAP Mat at(int index) const;

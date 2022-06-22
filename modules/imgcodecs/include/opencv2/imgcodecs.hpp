@@ -352,11 +352,10 @@ public:
                 m_ptr(ptr),
                 m_filename(std::move(filename)),
                 m_flags(flags),
-                m_size(size),
-                m_index(0) {}
+                m_size(size) {}
 
-        reference operator*() const { return *m_ptr; }
-        pointer operator->() { return m_ptr; }
+        reference operator*() const;
+        pointer operator->();
         Iterator& operator++();
         Iterator operator++(int);
         friend bool operator== (const Iterator& a, const Iterator& b) { return a.m_ptr == b.m_ptr; };
@@ -368,7 +367,6 @@ public:
         String m_filename;
         int m_flags;
         size_t m_size;
-        int m_index;
     };
 
     void setup(const String& img, int flags);

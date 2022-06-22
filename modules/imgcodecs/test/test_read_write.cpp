@@ -307,7 +307,7 @@ TEST(ImgCollection, read_tiff_multipage)
 {
     const string src_name = TS::ptr()->get_data_path() + "readwrite/multipage.tif";
     ImageCollection collection(src_name, IMREAD_ANYCOLOR);
-    EXPECT_EQ(6, collection.nimages());
+    EXPECT_EQ(6, collection.size());
 }
 
 TEST(ImgCollection, read_single_tiff_page)
@@ -334,8 +334,8 @@ TEST(ImgCollection, read_tiff_iterator)
 
     // This works as intended but there is no way to test this other than with debugger.
     // operator[] and .at(index) method reads the image into m_data.
-    for(int i = 0 ; i < collection.nimages(); ++i) {
-        collection.free(i);
+    for(int i = 0 ; i < collection.size(); ++i) {
+        collection.release(i);
     }
 }
 

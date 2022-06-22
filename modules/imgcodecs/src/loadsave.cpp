@@ -1069,7 +1069,7 @@ ImageCollection::Impl::Impl(std::string  filename, int flags) : m_filename(std::
 
 
     if (!decoder) {
-        throw cv::Exception(1, "No Encoder found for the file named" + img,
+        throw cv::Exception(1, "No Encoder found for the file named" + m_filename,
                             String("ImageCollection::fromMultiPageImage"),
                             __FILE__,
                             __LINE__);
@@ -1078,7 +1078,7 @@ ImageCollection::Impl::Impl(std::string  filename, int flags) : m_filename(std::
     decoder->setSource(m_filename);
 
     if (!decoder->readHeader())
-        throw cv::Exception(1, "Could not read image header" + img,
+        throw cv::Exception(1, "Could not read image header" + m_filename,
                             String("ImageCollection::fromMultiPageImage"),
                             __FILE__,
                             __LINE__);
@@ -1157,7 +1157,11 @@ CV_WRAP ImageCollection::Iterator ImageCollection::begin() { return pImpl->begin
 
 CV_WRAP ImageCollection::Iterator ImageCollection::end() { return pImpl->end(); }
 
-ImageCollection::Iterator& ImageCollection::Iterator::operator++() {
+ImageCollection::Iterator::reference ImageCollection::Iterator::operator*() const { return *m_ptr; }
+
+ImageCollection::Iterator::pointer ImageCollection::Iterator::operator->() { return m_ptr; }
+
+ImageCollection::Iterator &ImageCollection::Iterator::operator++() {
     m_ptr++;
     if(m_ptr->empty()) {
         std::vector<Mat> tmp;
@@ -1167,10 +1171,10 @@ ImageCollection::Iterator& ImageCollection::Iterator::operator++() {
     return *this;
 }
 
-ImageCollection::Iterator ImageCollection::Iterator::operator++(int) {
+ImageCollection::Iterator ImageCollection::Iterator::operator++(int i) {
     Iterator tmp = *this;
     ++(*this);
-    return *this;
+    return tmp;
 }
 
 }

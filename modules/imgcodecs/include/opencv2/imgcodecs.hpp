@@ -43,8 +43,6 @@
 #ifndef OPENCV_IMGCODECS_HPP
 #define OPENCV_IMGCODECS_HPP
 
-#include <utility>
-
 #include "opencv2/core.hpp"
 
 /**
@@ -335,26 +333,12 @@ CV_EXPORTS_W bool haveImageReader( const String& filename );
 CV_EXPORTS_W bool haveImageWriter( const String& filename );
 
 class CV_EXPORTS ImageCollection {
-    String m_filename;
-    int m_flags;
-    size_t m_size;
-    std::vector<Mat> m_data;
-
-private:
-    explicit ImageCollection(String filename, int flags, size_t size);
+    class Impl;
+    Ptr<Impl> pImpl;
 
 public:
-
-    struct Iterator;
-
-    CV_WRAP size_t nimages() const;
-    Mat operator[](int index);
-    CV_WRAP Mat at(int index);
-    CV_WRAP void free(int index);
-    CV_WRAP Iterator begin();
-    CV_WRAP Iterator end();
-
-    CV_WRAP static ImageCollection fromMultiPageImage(const std::string& img, int flags);
+    ImageCollection() = default;
+    ImageCollection(const String& filename, int flags);
 
     struct Iterator
     {
@@ -365,11 +349,11 @@ public:
         using reference         = cv::Mat&;
 
         explicit Iterator(pointer ptr, String filename, int flags, int size) :
-        m_ptr(ptr),
-        m_filename(std::move(filename)),
-        m_flags(flags),
-        m_size(size),
-        m_index(0) {}
+                m_ptr(ptr),
+                m_filename(std::move(filename)),
+                m_flags(flags),
+                m_size(size),
+                m_index(0) {}
 
         reference operator*() const { return *m_ptr; }
         pointer operator->() { return m_ptr; }
@@ -386,6 +370,14 @@ public:
         size_t m_size;
         int m_index;
     };
+
+    void setup(const String& img, int flags);
+    CV_WRAP size_t size() const;
+    Mat operator[](int index);
+    CV_WRAP Mat at(int index);
+    CV_WRAP void release(int index);
+    CV_WRAP Iterator begin();
+    CV_WRAP Iterator end();
 };
 
 //! @} imgcodecs

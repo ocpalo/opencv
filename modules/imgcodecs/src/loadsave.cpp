@@ -52,6 +52,7 @@
 #include <iostream>
 #include <fstream>
 #include <cerrno>
+#include <utility>
 #include <opencv2/core/utils/logger.hpp>
 #include <opencv2/core/utils/configuration.private.hpp>
 #include <opencv2/imgcodecs.hpp>
@@ -1034,27 +1035,25 @@ bool haveImageWriter( const String& filename )
     return !encoder.empty();
 }
 
-CV_WRAP size_t ImageCollection::nimages() const { return m_size; }
+class ImageCollection::Impl {
+private:
+    String m_filename;
+    int m_flags;
+    size_t m_size;
+    std::vector<Mat> m_data;
 
+public:
+    Impl(std::string  filename, int flags);
+    void setup(const String& img, int flags);
+    size_t size() const;
+    Mat operator[](int index);
+    Mat at(int index);
+    void release(int index);
+    Iterator begin();
+    Iterator end();
+};
 
-CV_WRAP ImageCollection::Iterator ImageCollection::begin() {
-
-    if(m_data[0].empty()) {
-        std::vector<Mat> tmp;
-        imreadmulti_(m_filename, m_flags, tmp, 0, 1);
-        m_data[0] = tmp[0];
-    }
-
-    return Iterator(&m_data[0], m_filename, m_flags, m_size);
-}
-
-CV_WRAP ImageCollection::Iterator ImageCollection::end() {
-    return Iterator(&m_data[m_data.size() - 1], m_filename, m_flags, m_size);
-}
-
-
-CV_WRAP ImageCollection ImageCollection::fromMultiPageImage(const std::string& img, int flags) {
-
+ImageCollection::Impl::Impl(std::string  filename, int flags) : m_filename(std::move(filename)) , m_flags(flags) {
     ImageDecoder decoder;
 
 #ifdef HAVE_GDAL
@@ -1063,40 +1062,50 @@ CV_WRAP ImageCollection ImageCollection::fromMultiPageImage(const std::string& i
     }
     else {
 #endif
-        decoder = findDecoder(img);
+        decoder = findDecoder(m_filename);
 #ifdef HAVE_GDAL
-        }
+    }
 #endif
 
-        /// if no decoder was found, return nothing.
-        if (!decoder) {
-            throw cv::Exception(1, "No Encoder found for the file named" + img,
-                                String("ImageCollection::fromMultiPageImage"),
-                                __FILE__,
-                                __LINE__);
-        }
 
-        decoder->setSource(img);
+    if (!decoder) {
+        throw cv::Exception(1, "No Encoder found for the file named" + img,
+                            String("ImageCollection::fromMultiPageImage"),
+                            __FILE__,
+                            __LINE__);
+    }
 
-        if (!decoder->readHeader())
-            throw cv::Exception(1, "Could not read image header" + img,
-                                String("ImageCollection::fromMultiPageImage"),
-                                __FILE__,
-                                __LINE__);
+    decoder->setSource(m_filename);
 
+    if (!decoder->readHeader())
+        throw cv::Exception(1, "Could not read image header" + img,
+                            String("ImageCollection::fromMultiPageImage"),
+                            __FILE__,
+                            __LINE__);
 
-        size_t count = 1;
-        while(decoder->nextPage()) count++;
+    size_t count = 1;
+    while(decoder->nextPage()) count++;
 
-    return ImageCollection(img, flags, count);
+    m_size = count;
+    m_data = std::vector<cv::Mat>(m_size + 1);
 }
 
-ImageCollection::ImageCollection(String filename, int flags, size_t size) : m_filename(filename),
-                                                                            m_flags(flags),
-                                                                            m_size(size),
-                                                                            m_data(size + 1){}
+void ImageCollection::Impl::setup(const String &filename, int flags) {
+    //TODO
+}
 
-Mat ImageCollection::at(int index) {
+size_t ImageCollection::Impl::size() const { return m_size; }
+
+Mat ImageCollection::Impl::operator[](int index) {
+    if(m_data[index].empty()) {
+        std::vector<Mat> mat;
+        imreadmulti_(m_filename, m_flags, mat, index, 1);
+        m_data[index] = mat[0];
+    }
+    return m_data[index];
+}
+
+Mat ImageCollection::Impl::at(int index) {
     if(index < 0 || index >= m_size)
         throw cv::Exception(0,
                             "Range out of bounds",
@@ -1107,7 +1116,7 @@ Mat ImageCollection::at(int index) {
     return operator[](index);
 }
 
-void ImageCollection::free(int index) {
+void ImageCollection::Impl::release(int index) {
     if(index < 0 || index >= m_size)
         throw cv::Exception(0,
                             "Range out of bounds",
@@ -1118,14 +1127,35 @@ void ImageCollection::free(int index) {
     m_data[index].release();
 }
 
-Mat ImageCollection::operator[](int index) {
-    if(m_data[index].empty()) {
-        std::vector<Mat> mat;
-        imreadmulti_(m_filename, m_flags, mat, index, 1);
-        m_data[index] = mat[0];
+ImageCollection::Iterator ImageCollection::Impl::begin() {
+    if(m_data[0].empty()) {
+        std::vector<Mat> tmp;
+        imreadmulti_(m_filename, m_flags, tmp, 0, 1);
+        m_data[0] = tmp[0];
     }
-    return m_data[index];
+
+    return Iterator(&m_data[0], m_filename, m_flags, m_size);
 }
+
+ImageCollection::Iterator ImageCollection::Impl::end() {
+    return Iterator(&m_data[m_data.size() - 1], m_filename, m_flags, m_size);
+}
+
+ImageCollection::ImageCollection(const std::string& filename, int flags) : pImpl(new Impl(filename, flags)) {}
+
+void ImageCollection::setup(const String& img, int flags) { pImpl->setup(img, flags); }
+
+CV_WRAP size_t ImageCollection::size() const { return pImpl->size(); }
+
+Mat ImageCollection::operator[](int index) { return pImpl->operator[](index); }
+
+CV_WRAP Mat ImageCollection::at(int index) { return pImpl->at(index); }
+
+void ImageCollection::release(int index) { pImpl->release(index); }
+
+CV_WRAP ImageCollection::Iterator ImageCollection::begin() { return pImpl->begin(); }
+
+CV_WRAP ImageCollection::Iterator ImageCollection::end() { return pImpl->end(); }
 
 ImageCollection::Iterator& ImageCollection::Iterator::operator++() {
     m_ptr++;

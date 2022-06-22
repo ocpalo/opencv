@@ -1038,11 +1038,12 @@ bool haveImageWriter( const String& filename )
 class ImageCollection::Impl {
 private:
     String m_filename;
-    int m_flags;
-    size_t m_size;
+    int m_flags{};
+    size_t m_size{};
     std::vector<Mat> m_data;
 
 public:
+    Impl() = default;
     Impl(std::string  filename, int flags);
     void setup(const String& img, int flags);
     size_t size() const;
@@ -1091,7 +1092,43 @@ ImageCollection::Impl::Impl(std::string  filename, int flags) : m_filename(std::
 }
 
 void ImageCollection::Impl::setup(const String &filename, int flags) {
-    //TODO
+    m_filename = filename;
+    m_flags = flags;
+
+    ImageDecoder decoder;
+
+#ifdef HAVE_GDAL
+    if (flags != IMREAD_UNCHANGED && (flags & IMREAD_LOAD_GDAL) == IMREAD_LOAD_GDAL) {
+        decoder = GdalDecoder().newDecoder();
+    }
+    else {
+#endif
+    decoder = findDecoder(m_filename);
+#ifdef HAVE_GDAL
+    }
+#endif
+
+
+    if (!decoder) {
+        throw cv::Exception(1, "No Encoder found for the file named" + m_filename,
+                            String("ImageCollection::fromMultiPageImage"),
+                            __FILE__,
+                            __LINE__);
+    }
+
+    decoder->setSource(m_filename);
+
+    if (!decoder->readHeader())
+        throw cv::Exception(1, "Could not read image header" + m_filename,
+                            String("ImageCollection::fromMultiPageImage"),
+                            __FILE__,
+                            __LINE__);
+
+    size_t count = 1;
+    while(decoder->nextPage()) count++;
+
+    m_size = count;
+    m_data = std::vector<cv::Mat>(m_size + 1);
 }
 
 size_t ImageCollection::Impl::size() const { return m_size; }
@@ -1141,6 +1178,8 @@ ImageCollection::Iterator ImageCollection::Impl::end() {
     return Iterator(&m_data[m_data.size() - 1], m_filename, m_flags, m_size);
 }
 
+ImageCollection::ImageCollection() : pImpl(new Impl()) {}
+
 ImageCollection::ImageCollection(const std::string& filename, int flags) : pImpl(new Impl(filename, flags)) {}
 
 void ImageCollection::setup(const String& img, int flags) { pImpl->setup(img, flags); }
@@ -1171,7 +1210,7 @@ ImageCollection::Iterator &ImageCollection::Iterator::operator++() {
     return *this;
 }
 
-ImageCollection::Iterator ImageCollection::Iterator::operator++(int i) {
+ImageCollection::Iterator ImageCollection::Iterator::operator++(int) {
     Iterator tmp = *this;
     ++(*this);
     return tmp;

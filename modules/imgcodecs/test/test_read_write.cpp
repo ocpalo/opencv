@@ -339,4 +339,19 @@ TEST(ImgCollection, read_tiff_iterator)
     }
 }
 
+TEST(ImgCollection, vector_of_tiff)
+{
+    const string src_name = TS::ptr()->get_data_path() + "readwrite/multipage.tif";
+    std::vector<ImageCollection> vecCollection(3);
+    for(auto& i: vecCollection){
+        i.setup(src_name, IMREAD_ANYCOLOR);
+    }
+
+    for(auto& coll : vecCollection) {
+        for(auto& img: coll) {
+            ASSERT_FALSE(img.empty());
+        }
+    }
+}
+
 }} // namespace

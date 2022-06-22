@@ -337,7 +337,7 @@ class CV_EXPORTS ImageCollection {
     Ptr<Impl> pImpl;
 
 public:
-    ImageCollection() = default;
+    ImageCollection();
     ImageCollection(const String& filename, int flags);
 
     struct Iterator

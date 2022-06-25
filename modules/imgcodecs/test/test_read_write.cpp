@@ -303,7 +303,7 @@ TEST(Imgcodecs_Image, write_umat)
     EXPECT_EQ(0, remove(dst_name.c_str()));
 }
 
-TEST(ImgCollection, read_tiff_multipage)
+TEST(Imgcodecs_Image, multipage_collection_size)
 {
     const string src_name = TS::ptr()->get_data_path() + "readwrite/multipage.tif";
     ImageCollection collection(src_name, IMREAD_ANYCOLOR);
@@ -311,7 +311,7 @@ TEST(ImgCollection, read_tiff_multipage)
 }
 
 
-TEST(ImgCollection, read_tiff_header)
+TEST(Imgcodecs_Image, multipage_collection_read)
 {
     const string src_name = TS::ptr()->get_data_path() + "readwrite/multipage.tif";
     ImageCollection collection(src_name, IMREAD_ANYCOLOR);
@@ -324,7 +324,7 @@ TEST(ImgCollection, read_tiff_header)
 }
 
 
-TEST(ImgCollection, read_tiff_iterator)
+TEST(Imgcodecs_Image, multipage_collection_iterator)
 {
     const string src_name = TS::ptr()->get_data_path() + "readwrite/multipage.tif";
     ImageCollection collection(src_name, IMREAD_ANYCOLOR);
@@ -345,7 +345,7 @@ TEST(ImgCollection, read_tiff_iterator)
 }
 
 
-TEST(ImgCollection, vector_of_tiff)
+TEST(Imgcodecs_Image, multipage_collection_iterbegin_after_advance)
 {
     const string src_name = TS::ptr()->get_data_path() + "readwrite/multipage.tif";
     ImageCollection collection(src_name, IMREAD_ANYCOLOR);

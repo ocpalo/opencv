@@ -334,23 +334,40 @@ CV_EXPORTS_W bool haveImageWriter( const String& filename );
 
 class CV_EXPORTS ImageCollection {
 public:
+    struct iterator {
+        iterator(ImageCollection& ref);
+        iterator(ImageCollection& ref, int end);
+
+        Mat operator*();
+        iterator& operator++();
+        iterator operator++(int);
+        friend bool operator== (const iterator& a, const iterator& b) { return a.m_curr == b.m_curr; };
+        friend bool operator!= (const iterator& a, const iterator& b) { return a.m_curr != b.m_curr; };
+        //friend std::ostream& operator<<(std::ostream& ostream, iterator const& o) { ostream<<o.m_ptr; return ostream;}
+
+    private:
+        class IImageCollectionIterator;
+        Ptr<IImageCollectionIterator> pImpl;
+        ImageCollection& m_ref;
+        int m_curr;
+    };
+
     ImageCollection();
     ImageCollection(const String& filename, int flags);
 
     void setup(const String& img, int flags);
     CV_WRAP size_t size() const;
     Mat operator*();
-    Mat operator[](int index);
-    CV_WRAP Mat at(int index);
-    CV_WRAP void release(int index);
-    CV_WRAP int width() const;
-    CV_WRAP int height() const;
-    CV_WRAP bool readHeader();
+    int width() const ;
+    int height() const ;
+    bool readHeader();
     void advance();
+    iterator begin();
+    iterator end();
 
 private:
-    class Impl;
-    Ptr<Impl> pImpl;
+    class IImageCollection;
+    Ptr<IImageCollection> pImpl;
 };
 
 //! @} imgcodecs

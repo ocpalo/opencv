@@ -1035,10 +1035,10 @@ bool haveImageWriter( const String& filename )
     return !encoder.empty();
 }
 
-class ImageCollection::Impl {
+class ImageCollection::IImageCollection {
 public:
-    Impl() = default;
-    Impl(const std::string&  filename, int flags);
+    IImageCollection() = default;
+    IImageCollection(const std::string&  filename, int flags);
     void setup(const String& img, int flags);
     size_t size() const;
     Mat operator*();
@@ -1061,11 +1061,11 @@ private:
     ImageDecoder m_decoder;
 };
 
-ImageCollection::Impl::Impl(std::string const& filename, int flags) {
+ImageCollection::IImageCollection::IImageCollection(std::string const& filename, int flags) {
     this->setup(filename, flags);
 }
 
-void ImageCollection::Impl::setup(String const& filename, int flags) {
+void ImageCollection::IImageCollection::setup(String const& filename, int flags) {
     m_filename = filename;
     m_flags = flags;
 
@@ -1131,40 +1131,40 @@ void ImageCollection::Impl::setup(String const& filename, int flags) {
     m_decoder->setSource(filename);
 }
 
-size_t ImageCollection::Impl::size() const { return m_size; }
+size_t ImageCollection::IImageCollection::size() const { return m_size; }
 
-Mat ImageCollection::Impl::operator*() {
+Mat ImageCollection::IImageCollection::operator*() {
     this->readHeader();
     return this->readData();
 }
 
-Mat ImageCollection::Impl::operator[](int index) {
+Mat ImageCollection::IImageCollection::operator[](int index) {
     return m_data[index];
 }
 
-Mat ImageCollection::Impl::at(int index) {
+Mat ImageCollection::IImageCollection::at(int index) {
     CV_Assert(index >= 0);
     CV_Assert(index < m_size);
     
     return operator[](index);
 }
 
-void ImageCollection::Impl::release(int index) {
+void ImageCollection::IImageCollection::release(int index) {
     CV_Assert(index >= 0);
     CV_Assert(index < m_size);
 
     m_data[index].release();
 }
 
-int ImageCollection::Impl::width() const {
+int ImageCollection::IImageCollection::width() const {
     return m_width;
 }
 
-int ImageCollection::Impl::height() const {
+int ImageCollection::IImageCollection::height() const {
     return m_height;
 }
 
-bool ImageCollection::Impl::readHeader() {
+bool ImageCollection::IImageCollection::readHeader() {
     bool status = m_decoder->readHeader();
     m_width = m_decoder->width();
     m_height = m_decoder->height();
@@ -1172,7 +1172,7 @@ bool ImageCollection::Impl::readHeader() {
 }
 
 // This method assumes readHeader method already called.
-Mat ImageCollection::Impl::readData() {
+Mat ImageCollection::IImageCollection::readData() {
     int type = m_decoder->type();
     if ((m_flags & IMREAD_LOAD_GDAL) != IMREAD_LOAD_GDAL && m_flags != IMREAD_UNCHANGED) {
         if ((m_flags & IMREAD_ANYDEPTH) == 0)
@@ -1210,21 +1210,24 @@ Mat ImageCollection::Impl::readData() {
     return mat;
 }
 
-ImageCollection::ImageCollection() : pImpl(new Impl()) {}
+ImageCollection::ImageCollection() : pImpl(new IImageCollection()) {}
 
-ImageCollection::ImageCollection(const std::string& filename, int flags) : pImpl(new Impl(filename, flags)) {}
+ImageCollection::ImageCollection(const std::string& filename, int flags) : pImpl(new IImageCollection(filename, flags)) {}
 
 void ImageCollection::setup(const String& img, int flags) { pImpl->setup(img, flags); }
 
 CV_WRAP size_t ImageCollection::size() const { return pImpl->size(); }
 
+ImageCollection::iterator ImageCollection::begin() {
+    return ImageCollection::iterator(*this);
+}
+
+ImageCollection::iterator ImageCollection::end() {
+    return ImageCollection::iterator(*this, this->size());
+}
+
+
 Mat ImageCollection::operator*() { return pImpl->operator*(); }
-
-Mat ImageCollection::operator[](int index) { return pImpl->operator[](index); }
-
-CV_WRAP Mat ImageCollection::at(int index) { return pImpl->at(index); }
-
-void ImageCollection::release(int index) { pImpl->release(index); }
 
 int ImageCollection::width() const { return pImpl->width(); }
 
@@ -1233,6 +1236,28 @@ int ImageCollection::height() const { return pImpl->height(); }
 bool ImageCollection::readHeader() { return pImpl->readHeader(); }
 
 void ImageCollection::advance() { pImpl->advance(); }
+
+ImageCollection::iterator::iterator(ImageCollection &ref) : m_ref(ref), m_curr(0) {}
+
+ImageCollection::iterator::iterator(ImageCollection &ref, int end) : m_ref(ref), m_curr(end) {}
+
+Mat ImageCollection::iterator::operator*() {
+    m_ref.pImpl->readHeader();
+    return m_ref.pImpl->readData();
+}
+
+ImageCollection::iterator& ImageCollection::iterator::operator++() {
+    m_ref.pImpl->advance();
+    m_curr++;
+    return *this;
+}
+
+ImageCollection::iterator ImageCollection::iterator::operator++(int) {
+    iterator tmp = *this;
+    ++(*this);
+    m_curr++;
+    return tmp;
+}
 
 }
 

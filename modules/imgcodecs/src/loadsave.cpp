@@ -1054,11 +1054,10 @@ private:
     String m_filename;
     int m_flags{};
     int m_size{};
-    std::vector<Mat> m_data;
     int m_width{};
     int m_height{};
-    ImageDecoder m_decoder;
     int m_current{};
+    ImageDecoder m_decoder;
 };
 
 ImageCollection::IImageCollection::IImageCollection(std::string const& filename, int flags) {
@@ -1114,8 +1113,6 @@ void ImageCollection::IImageCollection::setup(String const& filename, int flags)
     while(m_decoder->nextPage()) count++;
 
     m_size = count;
-    m_data = std::vector<cv::Mat>(m_size);
-
     reinitDecoder();
 }
 

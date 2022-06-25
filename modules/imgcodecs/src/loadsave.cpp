@@ -1036,15 +1036,6 @@ bool haveImageWriter( const String& filename )
 }
 
 class ImageCollection::Impl {
-private:
-    String m_filename;
-    int m_flags{};
-    int m_size{};
-    std::vector<Mat> m_data;
-    int m_width{};
-    int m_height{};
-    ImageDecoder m_decoder;
-
 public:
     Impl() = default;
     Impl(const std::string&  filename, int flags);
@@ -1059,10 +1050,15 @@ public:
     bool readHeader();
     Mat readData();
     bool advance() { return m_decoder->nextPage(); }
-    /*
-    Iterator begin();
-    Iterator end();
-     */
+
+private:
+    String m_filename;
+    int m_flags{};
+    int m_size{};
+    std::vector<Mat> m_data;
+    int m_width{};
+    int m_height{};
+    ImageDecoder m_decoder;
 };
 
 ImageCollection::Impl::Impl(std::string const& filename, int flags) {
@@ -1160,22 +1156,6 @@ void ImageCollection::Impl::release(int index) {
     m_data[index].release();
 }
 
-/*
-ImageCollection::Iterator ImageCollection::Impl::begin() {
-    if(m_data[0].empty()) {
-        std::vector<Mat> tmp;
-        imreadmulti_(m_filename, m_flags, tmp, 0, 1);
-        m_data[0] = tmp[0];
-    }
-
-    return Iterator(&m_data[0], m_filename, m_flags, m_size);
-}
-
-ImageCollection::Iterator ImageCollection::Impl::end() {
-    return Iterator(&m_data[m_data.size() - 1], m_filename, m_flags, m_size);
-}
- */
-
 int ImageCollection::Impl::width() const {
     return m_width;
 }
@@ -1223,7 +1203,6 @@ Mat ImageCollection::Impl::readData() {
     if (!success)
         return cv::Mat();
 
-    // optionally rotate the data if EXIF' orientation flag says so
     if ((m_flags & IMREAD_IGNORE_ORIENTATION) == 0 && m_flags != IMREAD_UNCHANGED) {
         ApplyExifOrientation(m_decoder->getExifTag(ORIENTATION), mat);
     }
@@ -1254,32 +1233,6 @@ int ImageCollection::height() const { return pImpl->height(); }
 bool ImageCollection::readHeader() { return pImpl->readHeader(); }
 
 void ImageCollection::advance() { pImpl->advance(); }
-
-/*
-CV_WRAP ImageCollection::Iterator ImageCollection::begin() { return pImpl->begin(); }
-
-CV_WRAP ImageCollection::Iterator ImageCollection::end() { return pImpl->end(); }
-
-ImageCollection::Iterator::reference ImageCollection::Iterator::operator*() const { return *m_ptr; }
-
-ImageCollection::Iterator::pointer ImageCollection::Iterator::operator->() { return m_ptr; }
-
-ImageCollection::Iterator &ImageCollection::Iterator::operator++() {
-    m_ptr++;
-    if(m_ptr->empty()) {
-        std::vector<Mat> tmp;
-        imreadmulti_(m_filename, m_flags, tmp, 0, 1);
-        *m_ptr = tmp[0];
-    }
-    return *this;
-}
-
-ImageCollection::Iterator ImageCollection::Iterator::operator++(int) {
-    Iterator tmp = *this;
-    ++(*this);
-    return tmp;
-}
- */
 
 }
 

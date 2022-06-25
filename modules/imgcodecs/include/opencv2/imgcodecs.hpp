@@ -333,43 +333,9 @@ CV_EXPORTS_W bool haveImageReader( const String& filename );
 CV_EXPORTS_W bool haveImageWriter( const String& filename );
 
 class CV_EXPORTS ImageCollection {
-    class Impl;
-    Ptr<Impl> pImpl;
-
 public:
     ImageCollection();
     ImageCollection(const String& filename, int flags);
-
-    /*
-    struct Iterator
-    {
-        using iterator_category = std::forward_iterator_tag;
-        using difference_type   = std::ptrdiff_t;
-        using value_type        = cv::Mat;
-        using pointer           = cv::Mat*;
-        using reference         = cv::Mat&;
-
-        explicit Iterator(pointer ptr, String filename, int flags, int size) :
-                m_ptr(ptr),
-                m_filename(std::move(filename)),
-                m_flags(flags),
-                m_size(size) {}
-
-        reference operator*() const;
-        pointer operator->();
-        Iterator& operator++();
-        Iterator operator++(int);
-        friend bool operator== (const Iterator& a, const Iterator& b) { return a.m_ptr == b.m_ptr; };
-        friend bool operator!= (const Iterator& a, const Iterator& b) { return a.m_ptr != b.m_ptr; };
-        friend std::ostream& operator<<(std::ostream& ostream, Iterator const& o) { ostream<<o.m_ptr; return ostream;}
-
-    private:
-        pointer m_ptr;
-        String m_filename;
-        int m_flags;
-        size_t m_size;
-    };
-     */
 
     void setup(const String& img, int flags);
     CV_WRAP size_t size() const;
@@ -381,10 +347,10 @@ public:
     CV_WRAP int height() const;
     CV_WRAP bool readHeader();
     void advance();
-    /*
-    CV_WRAP Iterator begin();
-    CV_WRAP Iterator end();
-     */
+
+private:
+    class Impl;
+    Ptr<Impl> pImpl;
 };
 
 //! @} imgcodecs

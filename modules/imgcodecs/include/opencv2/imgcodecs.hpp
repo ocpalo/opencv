@@ -353,7 +353,7 @@ public:
     ImageCollection(const String& filename, int flags);
 
     void setup(const String& img, int flags);
-    CV_WRAP size_t size() const;
+    size_t size() const;
     Mat read();
     int width() const ;
     int height() const ;

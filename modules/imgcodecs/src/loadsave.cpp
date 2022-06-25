@@ -1202,7 +1202,7 @@ ImageCollection::ImageCollection(const std::string& filename, int flags) : pImpl
 
 void ImageCollection::setup(const String& img, int flags) { pImpl->setup(img, flags); }
 
-CV_WRAP size_t ImageCollection::size() const { return pImpl->size(); }
+size_t ImageCollection::size() const { return pImpl->size(); }
 
 ImageCollection::iterator ImageCollection::begin() {
     if(pImpl->currentIndex()) {

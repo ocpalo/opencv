@@ -343,11 +343,8 @@ public:
         iterator operator++(int);
         friend bool operator== (const iterator& a, const iterator& b) { return a.m_curr == b.m_curr; };
         friend bool operator!= (const iterator& a, const iterator& b) { return a.m_curr != b.m_curr; };
-        //friend std::ostream& operator<<(std::ostream& ostream, iterator const& o) { ostream<<o.m_ptr; return ostream;}
 
     private:
-        class IImageCollectionIterator;
-        Ptr<IImageCollectionIterator> pImpl;
         ImageCollection& m_ref;
         int m_curr;
     };
@@ -357,11 +354,13 @@ public:
 
     void setup(const String& img, int flags);
     CV_WRAP size_t size() const;
-    Mat operator*();
+    Mat read();
     int width() const ;
     int height() const ;
     bool readHeader();
+    Mat readData();
     void advance();
+    int currentIndex();
     iterator begin();
     iterator end();
 

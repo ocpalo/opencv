@@ -1041,15 +1041,14 @@ public:
     IImageCollection(const std::string&  filename, int flags);
     void setup(const String& img, int flags);
     size_t size() const;
-    Mat operator*();
-    Mat operator[](int index);
-    Mat at(int index);
-    void release(int index);
+    Mat read();
     int width() const;
     int height() const;
     bool readHeader();
     Mat readData();
-    bool advance() { return m_decoder->nextPage(); }
+    bool advance();
+    int currentIndex() const;
+    void reinitDecoder();
 
 private:
     String m_filename;
@@ -1059,6 +1058,7 @@ private:
     int m_width{};
     int m_height{};
     ImageDecoder m_decoder;
+    int m_current{};
 };
 
 ImageCollection::IImageCollection::IImageCollection(std::string const& filename, int flags) {
@@ -1116,44 +1116,14 @@ void ImageCollection::IImageCollection::setup(String const& filename, int flags)
     m_size = count;
     m_data = std::vector<cv::Mat>(m_size);
 
-    // Restore decoder status. This is needed because we iterate over pages to set m_size.
-#ifdef HAVE_GDAL
-    if (flags != IMREAD_UNCHANGED && (flags & IMREAD_LOAD_GDAL) == IMREAD_LOAD_GDAL) {
-        decoder = GdalDecoder().newDecoder();
-    }
-    else {
-#endif
-    m_decoder = findDecoder(filename);
-#ifdef HAVE_GDAL
-    }
-#endif
-
-    m_decoder->setSource(filename);
+    reinitDecoder();
 }
 
 size_t ImageCollection::IImageCollection::size() const { return m_size; }
 
-Mat ImageCollection::IImageCollection::operator*() {
+Mat ImageCollection::IImageCollection::read() {
     this->readHeader();
     return this->readData();
-}
-
-Mat ImageCollection::IImageCollection::operator[](int index) {
-    return m_data[index];
-}
-
-Mat ImageCollection::IImageCollection::at(int index) {
-    CV_Assert(index >= 0);
-    CV_Assert(index < m_size);
-    
-    return operator[](index);
-}
-
-void ImageCollection::IImageCollection::release(int index) {
-    CV_Assert(index >= 0);
-    CV_Assert(index < m_size);
-
-    m_data[index].release();
 }
 
 int ImageCollection::IImageCollection::width() const {
@@ -1210,6 +1180,25 @@ Mat ImageCollection::IImageCollection::readData() {
     return mat;
 }
 
+bool ImageCollection::IImageCollection::advance() {  ++m_current; return m_decoder->nextPage(); }
+
+int ImageCollection::IImageCollection::currentIndex() const { return m_current; }
+
+void ImageCollection::IImageCollection::reinitDecoder() {
+#ifdef HAVE_GDAL
+    if (flags != IMREAD_UNCHANGED && (flags & IMREAD_LOAD_GDAL) == IMREAD_LOAD_GDAL) {
+        decoder = GdalDecoder().newDecoder();
+    }
+    else {
+#endif
+    m_decoder = findDecoder(m_filename);
+#ifdef HAVE_GDAL
+    }
+#endif
+
+    m_decoder->setSource(m_filename);
+}
+
 ImageCollection::ImageCollection() : pImpl(new IImageCollection()) {}
 
 ImageCollection::ImageCollection(const std::string& filename, int flags) : pImpl(new IImageCollection(filename, flags)) {}
@@ -1219,6 +1208,9 @@ void ImageCollection::setup(const String& img, int flags) { pImpl->setup(img, fl
 CV_WRAP size_t ImageCollection::size() const { return pImpl->size(); }
 
 ImageCollection::iterator ImageCollection::begin() {
+    if(pImpl->currentIndex()) {
+        pImpl->reinitDecoder();
+    }
     return ImageCollection::iterator(*this);
 }
 
@@ -1226,8 +1218,7 @@ ImageCollection::iterator ImageCollection::end() {
     return ImageCollection::iterator(*this, this->size());
 }
 
-
-Mat ImageCollection::operator*() { return pImpl->operator*(); }
+Mat ImageCollection::read() { return pImpl->read(); }
 
 int ImageCollection::width() const { return pImpl->width(); }
 
@@ -1235,7 +1226,11 @@ int ImageCollection::height() const { return pImpl->height(); }
 
 bool ImageCollection::readHeader() { return pImpl->readHeader(); }
 
+Mat ImageCollection::readData() { return pImpl->readData(); }
+
 void ImageCollection::advance() { pImpl->advance(); }
+
+int ImageCollection::currentIndex() { return pImpl->currentIndex(); }
 
 ImageCollection::iterator::iterator(ImageCollection &ref) : m_ref(ref), m_curr(0) {}
 

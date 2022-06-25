@@ -316,9 +316,9 @@ TEST(ImgCollection, read_tiff_header)
     const string src_name = TS::ptr()->get_data_path() + "readwrite/multipage.tif";
     ImageCollection collection(src_name, IMREAD_ANYCOLOR);
 
-    auto c = *collection;
+    auto c = collection.read();
     collection.advance();
-    auto c2 = *collection;
+    auto c2 = collection.read();
     bool isEqual = (sum(c != c2) == Scalar(0,0,0,0));
     ASSERT_FALSE(isEqual);
 }
@@ -330,7 +330,7 @@ TEST(ImgCollection, read_tiff_iterator)
     ImageCollection collection(src_name, IMREAD_ANYCOLOR);
 
     int count = 0;
-    auto prev = *collection;
+    auto prev = collection.read();
     for(auto&& i : collection) {
         // pass first image
         if(count == 0) {
@@ -342,27 +342,25 @@ TEST(ImgCollection, read_tiff_iterator)
         ASSERT_FALSE(isEqual);
         prev = curr;
     }
-
-    for(auto i: collection)
-    {
-
-    }
 }
 
-/*
+
 TEST(ImgCollection, vector_of_tiff)
 {
     const string src_name = TS::ptr()->get_data_path() + "readwrite/multipage.tif";
-    std::vector<ImageCollection> vecCollection(3);
-    for(auto& i: vecCollection){
-        i.setup(src_name, IMREAD_ANYCOLOR);
+    ImageCollection collection(src_name, IMREAD_ANYCOLOR);
+
+    // suppose we already decoded 2 pages but after some action, we want to iterate from beginning
+    collection.advance();
+    collection.advance();
+
+    // begin checks if currentIndex is not equal to 0, it reinitialize decoder
+    int count = 0;
+    for(auto&&i : collection) {
+        count++;
     }
 
-    for(auto& coll : vecCollection) {
-        for(auto& img: coll) {
-            ASSERT_FALSE(img.empty());
-        }
-    }
-}*/
+    EXPECT_EQ(count, 6);
+}
 
 }} // namespace

@@ -340,6 +340,7 @@ public:
     ImageCollection();
     ImageCollection(const String& filename, int flags);
 
+    /*
     struct Iterator
     {
         using iterator_category = std::forward_iterator_tag;
@@ -368,14 +369,22 @@ public:
         int m_flags;
         size_t m_size;
     };
+     */
 
     void setup(const String& img, int flags);
     CV_WRAP size_t size() const;
+    Mat operator*();
     Mat operator[](int index);
     CV_WRAP Mat at(int index);
     CV_WRAP void release(int index);
+    CV_WRAP int width() const;
+    CV_WRAP int height() const;
+    CV_WRAP bool readHeader();
+    void advance();
+    /*
     CV_WRAP Iterator begin();
     CV_WRAP Iterator end();
+     */
 };
 
 //! @} imgcodecs

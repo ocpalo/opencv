@@ -310,16 +310,20 @@ TEST(ImgCollection, read_tiff_multipage)
     EXPECT_EQ(6, collection.size());
 }
 
-TEST(ImgCollection, read_single_tiff_page)
+
+TEST(ImgCollection, read_tiff_header)
 {
     const string src_name = TS::ptr()->get_data_path() + "readwrite/multipage.tif";
     ImageCollection collection(src_name, IMREAD_ANYCOLOR);
 
-    ASSERT_FALSE(collection.at(3).empty());
-    EXPECT_EQ(collection.at(3).rows, 1010);
-    EXPECT_EQ(collection[3].rows, 1010);
+    auto c = *collection;
+    collection.advance();
+    auto c2 = *collection;
+    bool isEqual = (sum(c != c2) == Scalar(0,0,0,0));
+    ASSERT_FALSE(isEqual);
 }
 
+/*
 TEST(ImgCollection, read_tiff_iterator)
 {
     const string src_name = TS::ptr()->get_data_path() + "readwrite/multipage.tif";
@@ -328,8 +332,12 @@ TEST(ImgCollection, read_tiff_iterator)
     auto beg = collection.begin();
     ASSERT_FALSE(beg->empty());
 
-    for(auto& i : collection) {
-        ASSERT_FALSE(i.empty());
+    // TODO compare current image with prev
+    auto prev = collection[0];
+    for(auto i = 1; i < collection.size(); ++i) {
+        if (prev.cols != collection[i].cols || prev.rows != collection[i].rows || prev.dims != collection[i].dims) {
+            continue;
+        }
     }
 
     // This works as intended but there is no way to test this other than with debugger.
@@ -352,6 +360,6 @@ TEST(ImgCollection, vector_of_tiff)
             ASSERT_FALSE(img.empty());
         }
     }
-}
+}*/
 
 }} // namespace

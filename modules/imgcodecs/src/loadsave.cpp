@@ -1039,131 +1039,128 @@ class ImageCollection::Impl {
 private:
     String m_filename;
     int m_flags{};
-    size_t m_size{};
+    int m_size{};
     std::vector<Mat> m_data;
+    int m_width{};
+    int m_height{};
+    ImageDecoder m_decoder;
 
 public:
     Impl() = default;
-    Impl(std::string  filename, int flags);
+    Impl(const std::string&  filename, int flags);
     void setup(const String& img, int flags);
     size_t size() const;
+    Mat operator*();
     Mat operator[](int index);
     Mat at(int index);
     void release(int index);
+    int width() const;
+    int height() const;
+    bool readHeader();
+    Mat readData();
+    bool advance() { return m_decoder->nextPage(); }
+    /*
     Iterator begin();
     Iterator end();
+     */
 };
 
-ImageCollection::Impl::Impl(std::string  filename, int flags) : m_filename(std::move(filename)) , m_flags(flags) {
-    ImageDecoder decoder;
-
-#ifdef HAVE_GDAL
-    if (flags != IMREAD_UNCHANGED && (flags & IMREAD_LOAD_GDAL) == IMREAD_LOAD_GDAL) {
-        decoder = GdalDecoder().newDecoder();
-    }
-    else {
-#endif
-        decoder = findDecoder(m_filename);
-#ifdef HAVE_GDAL
-    }
-#endif
-
-
-    if (!decoder) {
-        throw cv::Exception(1, "No Encoder found for the file named" + m_filename,
-                            String("ImageCollection::fromMultiPageImage"),
-                            __FILE__,
-                            __LINE__);
-    }
-
-    decoder->setSource(m_filename);
-
-    if (!decoder->readHeader())
-        throw cv::Exception(1, "Could not read image header" + m_filename,
-                            String("ImageCollection::fromMultiPageImage"),
-                            __FILE__,
-                            __LINE__);
-
-    size_t count = 1;
-    while(decoder->nextPage()) count++;
-
-    m_size = count;
-    m_data = std::vector<cv::Mat>(m_size + 1);
+ImageCollection::Impl::Impl(std::string const& filename, int flags) {
+    this->setup(filename, flags);
 }
 
-void ImageCollection::Impl::setup(const String &filename, int flags) {
+void ImageCollection::Impl::setup(String const& filename, int flags) {
     m_filename = filename;
     m_flags = flags;
 
-    ImageDecoder decoder;
-
 #ifdef HAVE_GDAL
     if (flags != IMREAD_UNCHANGED && (flags & IMREAD_LOAD_GDAL) == IMREAD_LOAD_GDAL) {
         decoder = GdalDecoder().newDecoder();
     }
     else {
 #endif
-    decoder = findDecoder(m_filename);
+    m_decoder = findDecoder(filename);
 #ifdef HAVE_GDAL
     }
 #endif
 
 
-    if (!decoder) {
-        throw cv::Exception(1, "No Encoder found for the file named" + m_filename,
-                            String("ImageCollection::fromMultiPageImage"),
+    if (!m_decoder) {
+        throw cv::Exception(1, "No Encoder found for the file named:" + m_filename,
+                            String("ImageCollection::Constructor"),
                             __FILE__,
                             __LINE__);
     }
 
-    decoder->setSource(m_filename);
+    m_decoder->setSource(filename);
 
-    if (!decoder->readHeader())
-        throw cv::Exception(1, "Could not read image header" + m_filename,
-                            String("ImageCollection::fromMultiPageImage"),
-                            __FILE__,
-                            __LINE__);
+    try {
+
+        if (!m_decoder->readHeader())
+            throw cv::Exception(1, "Can not read image header in ImageCollection" +
+                                String(" file named " + m_filename),
+                                String("ImageCollection::Constructor"),
+                                __FILE__,
+                                __LINE__);
+    }
+    catch (const cv::Exception& e)
+    {
+        std::cerr << "ImageCollection class:: can't read header: " << e.what() << std::endl << std::flush;
+        throw cv::Exception();
+    }
+    catch (...)
+    {
+        std::cerr << "ImageCollection class:: can't read header: unknown exception" << std::endl << std::flush;
+        throw cv::Exception();
+    }
 
     size_t count = 1;
-    while(decoder->nextPage()) count++;
+    while(m_decoder->nextPage()) count++;
 
     m_size = count;
-    m_data = std::vector<cv::Mat>(m_size + 1);
+    m_data = std::vector<cv::Mat>(m_size);
+
+    // Restore decoder status. This is needed because we iterate over pages to set m_size.
+#ifdef HAVE_GDAL
+    if (flags != IMREAD_UNCHANGED && (flags & IMREAD_LOAD_GDAL) == IMREAD_LOAD_GDAL) {
+        decoder = GdalDecoder().newDecoder();
+    }
+    else {
+#endif
+    m_decoder = findDecoder(filename);
+#ifdef HAVE_GDAL
+    }
+#endif
+
+    m_decoder->setSource(filename);
 }
 
 size_t ImageCollection::Impl::size() const { return m_size; }
 
+Mat ImageCollection::Impl::operator*() {
+    this->readHeader();
+    return this->readData();
+}
+
 Mat ImageCollection::Impl::operator[](int index) {
-    if(m_data[index].empty()) {
-        std::vector<Mat> mat;
-        imreadmulti_(m_filename, m_flags, mat, index, 1);
-        m_data[index] = mat[0];
-    }
     return m_data[index];
 }
 
 Mat ImageCollection::Impl::at(int index) {
-    if(index < 0 || index >= m_size)
-        throw cv::Exception(0,
-                            "Range out of bounds",
-                            "ImageCollection::at function",
-                            __FILE__,
-                            __LINE__);
+    CV_Assert(index >= 0);
+    CV_Assert(index < m_size);
     
     return operator[](index);
 }
 
 void ImageCollection::Impl::release(int index) {
-    if(index < 0 || index >= m_size)
-        throw cv::Exception(0,
-                            "Range out of bounds",
-                            "ImageCollection::at function",
-                            __FILE__,
-                            __LINE__);
+    CV_Assert(index >= 0);
+    CV_Assert(index < m_size);
 
     m_data[index].release();
 }
 
+/*
 ImageCollection::Iterator ImageCollection::Impl::begin() {
     if(m_data[0].empty()) {
         std::vector<Mat> tmp;
@@ -1177,6 +1174,62 @@ ImageCollection::Iterator ImageCollection::Impl::begin() {
 ImageCollection::Iterator ImageCollection::Impl::end() {
     return Iterator(&m_data[m_data.size() - 1], m_filename, m_flags, m_size);
 }
+ */
+
+int ImageCollection::Impl::width() const {
+    return m_width;
+}
+
+int ImageCollection::Impl::height() const {
+    return m_height;
+}
+
+bool ImageCollection::Impl::readHeader() {
+    bool status = m_decoder->readHeader();
+    m_width = m_decoder->width();
+    m_height = m_decoder->height();
+    return status;
+}
+
+// This method assumes readHeader method already called.
+Mat ImageCollection::Impl::readData() {
+    int type = m_decoder->type();
+    if ((m_flags & IMREAD_LOAD_GDAL) != IMREAD_LOAD_GDAL && m_flags != IMREAD_UNCHANGED) {
+        if ((m_flags & IMREAD_ANYDEPTH) == 0)
+            type = CV_MAKETYPE(CV_8U, CV_MAT_CN(type));
+
+        if ((m_flags & IMREAD_COLOR) != 0 ||
+            ((m_flags & IMREAD_ANYCOLOR) != 0 && CV_MAT_CN(type) > 1))
+            type = CV_MAKETYPE(CV_MAT_DEPTH(type), 3);
+        else
+            type = CV_MAKETYPE(CV_MAT_DEPTH(type), 1);
+    }
+
+    // established the required input image size
+    Size size = validateInputImageSize(Size(m_decoder->width(), m_decoder->height()));
+
+    Mat mat(size.height, size.width, type);
+    bool success = false;
+    try {
+        if (m_decoder->readData(mat))
+            success = true;
+    }
+    catch (const cv::Exception &e) {
+        std::cerr << "ImageCollection class: can't read data: " << e.what() << std::endl << std::flush;
+    }
+    catch (...) {
+        std::cerr << "ImageCollection class:: can't read data: unknown exception" << std::endl << std::flush;
+    }
+    if (!success)
+        return cv::Mat();
+
+    // optionally rotate the data if EXIF' orientation flag says so
+    if ((m_flags & IMREAD_IGNORE_ORIENTATION) == 0 && m_flags != IMREAD_UNCHANGED) {
+        ApplyExifOrientation(m_decoder->getExifTag(ORIENTATION), mat);
+    }
+
+    return mat;
+}
 
 ImageCollection::ImageCollection() : pImpl(new Impl()) {}
 
@@ -1186,12 +1239,23 @@ void ImageCollection::setup(const String& img, int flags) { pImpl->setup(img, fl
 
 CV_WRAP size_t ImageCollection::size() const { return pImpl->size(); }
 
+Mat ImageCollection::operator*() { return pImpl->operator*(); }
+
 Mat ImageCollection::operator[](int index) { return pImpl->operator[](index); }
 
 CV_WRAP Mat ImageCollection::at(int index) { return pImpl->at(index); }
 
 void ImageCollection::release(int index) { pImpl->release(index); }
 
+int ImageCollection::width() const { return pImpl->width(); }
+
+int ImageCollection::height() const { return pImpl->height(); }
+
+bool ImageCollection::readHeader() { return pImpl->readHeader(); }
+
+void ImageCollection::advance() { pImpl->advance(); }
+
+/*
 CV_WRAP ImageCollection::Iterator ImageCollection::begin() { return pImpl->begin(); }
 
 CV_WRAP ImageCollection::Iterator ImageCollection::end() { return pImpl->end(); }
@@ -1215,6 +1279,7 @@ ImageCollection::Iterator ImageCollection::Iterator::operator++(int) {
     ++(*this);
     return tmp;
 }
+ */
 
 }
 

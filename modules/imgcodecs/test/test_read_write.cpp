@@ -307,7 +307,7 @@ TEST(Imgcodecs_Image, multipage_collection_size)
 {
     const string src_name = TS::ptr()->get_data_path() + "readwrite/multipage.tif";
     ImageCollection collection(src_name, IMREAD_ANYCOLOR);
-    EXPECT_EQ(6, collection.size());
+    EXPECT_EQ((size_t)6, collection.size());
 }
 
 

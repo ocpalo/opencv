@@ -359,7 +359,7 @@ public:
     int height() const ;
     bool readHeader();
     Mat readData();
-    void advance();
+    bool advance();
     int currentIndex();
     iterator begin();
     iterator end();

@@ -1109,10 +1109,10 @@ ImageCollection::iterator& ImageCollection::iterator::operator++() {
 }
 
 ImageCollection::iterator ImageCollection::iterator::operator++(int) {
+    iterator tmp = *this;
     ++(*this);
     return tmp;
 }
-
 
 }
 

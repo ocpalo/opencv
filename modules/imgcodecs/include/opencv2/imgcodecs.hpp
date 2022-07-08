@@ -353,9 +353,6 @@ public:
         friend bool operator== (const iterator& a, const iterator& b) { return a.m_curr == b.m_curr; };
         friend bool operator!= (const iterator& a, const iterator& b) { return a.m_curr != b.m_curr; };
 
-    protected:
-        //iterator operator=(iterator const&); // to implement iterator++(int)
-
     private:
         ImageCollection* m_ref;
         int m_curr;

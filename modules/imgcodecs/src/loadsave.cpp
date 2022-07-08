@@ -499,113 +499,23 @@ imread_( const String& filename, int flags, Mat& mat )
 static bool
 imreadmulti_(const String& filename, int flags, std::vector<Mat>& mats, int start, int count)
 {
-    /// Search for the relevant decoder to handle the imagery
-    ImageDecoder decoder;
+    CV_CheckGE(start, 0, "Start index can not be < 0");
 
-    CV_CheckGE(start, 0, "Start index cannont be < 0");
+    ImageCollection collection(filename, flags);
+    ImageCollection::iterator iter = collection.begin();
 
-#ifdef HAVE_GDAL
-    if (flags != IMREAD_UNCHANGED && (flags & IMREAD_LOAD_GDAL) == IMREAD_LOAD_GDAL) {
-        decoder = GdalDecoder().newDecoder();
-    }
-    else {
-#endif
-    decoder = findDecoder(filename);
-#ifdef HAVE_GDAL
-    }
-#endif
-
-    /// if no decoder was found, return nothing.
-    if (!decoder) {
-        return 0;
-    }
-
-    if (count < 0) {
-        count = std::numeric_limits<int>::max();
-    }
-
-    /// set the filename in the driver
-    decoder->setSource(filename);
-
-    // read the header to make sure it succeeds
-    try
-    {
-        // read the header to make sure it succeeds
-        if (!decoder->readHeader())
-            return 0;
-    }
-    catch (const cv::Exception& e)
-    {
-        std::cerr << "imreadmulti_('" << filename << "'): can't read header: " << e.what() << std::endl << std::flush;
-        return 0;
-    }
-    catch (...)
-    {
-        std::cerr << "imreadmulti_('" << filename << "'): can't read header: unknown exception" << std::endl << std::flush;
-        return 0;
-    }
-
-    int current = start;
-
-    while (current > 0)
-    {
-        if (!decoder->nextPage())
-        {
-            return false;
+    if(collection.size() < (size_t)start)
+        return false;
+    if(count != -1) {
+        for(int i = 0; i < start; ++i) {
+            ++iter;
         }
-        --current;
     }
 
-    while (current < count)
-    {
-        // grab the decoded type
-        int type = decoder->type();
-        if ((flags & IMREAD_LOAD_GDAL) != IMREAD_LOAD_GDAL && flags != IMREAD_UNCHANGED)
-        {
-            if ((flags & IMREAD_ANYDEPTH) == 0)
-                type = CV_MAKETYPE(CV_8U, CV_MAT_CN(type));
 
-            if ((flags & IMREAD_COLOR) != 0 ||
-                ((flags & IMREAD_ANYCOLOR) != 0 && CV_MAT_CN(type) > 1))
-                type = CV_MAKETYPE(CV_MAT_DEPTH(type), 3);
-            else
-                type = CV_MAKETYPE(CV_MAT_DEPTH(type), 1);
-        }
-
-        // established the required input image size
-        Size size = validateInputImageSize(Size(decoder->width(), decoder->height()));
-
-        // read the image data
-        Mat mat(size.height, size.width, type);
-        bool success = false;
-        try
-        {
-            if (decoder->readData(mat))
-                success = true;
-        }
-        catch (const cv::Exception& e)
-        {
-            std::cerr << "imreadmulti_('" << filename << "'): can't read data: " << e.what() << std::endl << std::flush;
-        }
-        catch (...)
-        {
-            std::cerr << "imreadmulti_('" << filename << "'): can't read data: unknown exception" << std::endl << std::flush;
-        }
-        if (!success)
-            break;
-
-        // optionally rotate the data if EXIF' orientation flag says so
-        if ((flags & IMREAD_IGNORE_ORIENTATION) == 0 && flags != IMREAD_UNCHANGED)
-        {
-            ApplyExifOrientation(decoder->getExifTag(ORIENTATION), mat);
-        }
-
-        mats.push_back(mat);
-        if (!decoder->nextPage())
-        {
-            break;
-        }
-        ++current;
+    for(size_t i = 0; i < (size_t)count && i < collection.size(); ++i) {
+        mats.push_back(*iter);
+        iter++;
     }
 
     return !mats.empty();
@@ -1145,7 +1055,7 @@ Mat ImageCollection::Impl::readData() {
     return mat;
 }
 
-bool ImageCollection::Impl::advance() {  ++m_current; return m_decoder->nextPage(); }
+bool ImageCollection::Impl::advance() {  ++m_current; m_decoder->readHeader(); return m_decoder->nextPage(); }
 
 int ImageCollection::Impl::currentIndex() const { return m_current; }
 

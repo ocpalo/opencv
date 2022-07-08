@@ -330,6 +330,35 @@ TEST(Imgcodecs_Image, multipage_collection_iterator)
         ASSERT_FALSE(isEqual);
         prev = curr;
     }
+
+    collection.init(src_name, IMREAD_ANYCOLOR);
+    auto collbegin = collection.begin();
+    prev = *collbegin;
+    for(size_t i = 0; i < collection.size(); ++i) {
+        if(i == 0) {
+            collbegin++;
+            continue;
+        }
+        auto curr = *collbegin;
+        bool isEqual = (sum(prev != curr) == Scalar(0,0,0,0));
+        ASSERT_FALSE(isEqual);
+        prev = curr;
+        collbegin++;
+    }
+
+    collection.init(src_name, IMREAD_ANYCOLOR);
+    count = 0;
+    auto firstpage = collection.begin().operator*();
+    for(auto it = collection.begin(); it != collection.end(); ++it) {
+        if(count == 0) {
+            count++;
+            continue;
+        }
+        auto currentpage = *it;
+        bool isEqual = (sum(firstpage != currentpage) == Scalar(0,0,0,0));
+        ASSERT_FALSE(isEqual);
+        firstpage = currentpage;
+    }
 }
 
 

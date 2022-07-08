@@ -503,7 +503,7 @@ imreadmulti_(const String& filename, int flags, std::vector<Mat>& mats, int star
     ImageCollection collection;
 
     try {
-        collection.init(filename, flags);
+        collection.init({filename, flags});
     } catch (const cv::Exception& e)
     {
         std::cerr << "imreadmulti_('" << filename << "'): can't read header: " << e.what() << std::endl << std::flush;
@@ -592,11 +592,18 @@ bool imreadmulti(const String& filename, std::vector<Mat>& mats, int start, int 
 static
 size_t imcount_(const String& filename, int flags)
 {
-    try{
-        ImageCollection collection(filename, flags);
+    try {
+        ImageCollection collection({filename, flags});
         return collection.size();
-    } catch(cv::Exception const& e) {
-        // Reading header or finding decoder for the filename is failed
+    }
+    catch (const cv::Exception& e)
+    {
+        std::cerr << "imcount_('" << filename << "'): can't read header: " << e.what() << std::endl << std::flush;
+        return 0;
+    }
+    catch (...)
+    {
+        std::cerr << "imcount_('" << filename << "'): can't read header: unknown exception" << std::endl << std::flush;
         return 0;
     }
     return 0;
@@ -926,8 +933,8 @@ bool haveImageWriter( const String& filename )
 class ImageCollection::Impl {
 public:
     Impl() = default;
-    Impl(const std::string&  filename, int flags);
-    void init(String const& img, int flags);
+    explicit Impl(ICParams parameters);
+    void init(ICParams parameters);
     size_t size() const;
     Mat read();
     int width() const;
@@ -936,10 +943,10 @@ public:
     Mat readData();
     bool advance();
     int currentIndex() const;
+    ICParams parameters() const;
 
 private:
-    String m_filename;
-    int m_flags{};
+    ICParams m_parameters;
     std::size_t m_size{};
     int m_width{};
     int m_height{};
@@ -947,13 +954,12 @@ private:
     ImageDecoder m_decoder;
 };
 
-ImageCollection::Impl::Impl(std::string const& filename, int flags) {
-    this->init(filename, flags);
+ImageCollection::Impl::Impl(ICParams parameters) {
+    this->init(std::move(parameters));
 }
 
-void ImageCollection::Impl::init(String const& filename, int flags) {
-    m_filename = filename;
-    m_flags = flags;
+void ImageCollection::Impl::init(ICParams parameters) {
+    m_parameters = std::move(parameters);
 
 #ifdef HAVE_GDAL
     if (m_flags != IMREAD_UNCHANGED && (m_flags & IMREAD_LOAD_GDAL) == IMREAD_LOAD_GDAL) {
@@ -961,24 +967,24 @@ void ImageCollection::Impl::init(String const& filename, int flags) {
     }
     else {
 #endif
-    m_decoder = findDecoder(filename);
+    m_decoder = findDecoder(m_parameters.filename);
 #ifdef HAVE_GDAL
     }
 #endif
 
 
     if (!m_decoder) {
-        throw cv::Exception(1, "No Encoder found for the file named:" + m_filename,
+        throw cv::Exception(1, "No Encoder found for the file named:" + m_parameters.filename,
                             String("ImageCollection::Constructor"),
                             __FILE__,
                             __LINE__);
     }
 
-    m_decoder->setSource(filename);
+    m_decoder->setSource(m_parameters.filename);
 
     if (!m_decoder->readHeader())
         throw cv::Exception(1, "Can not read image header in ImageCollection" +
-                                String(" file named " + m_filename),
+                                String(" file named " + m_parameters.filename),
                                 String("ImageCollection::Constructor"),
                                 __FILE__,
                                 __LINE__);
@@ -994,12 +1000,12 @@ void ImageCollection::Impl::init(String const& filename, int flags) {
     }
     else {
 #endif
-    m_decoder = findDecoder(m_filename);
+    m_decoder = findDecoder(m_parameters.filename);
 #ifdef HAVE_GDAL
     }
 #endif
 
-    m_decoder->setSource(m_filename);
+    m_decoder->setSource(m_parameters.filename);
 }
 
 size_t ImageCollection::Impl::size() const { return m_size; }
@@ -1027,12 +1033,12 @@ bool ImageCollection::Impl::readHeader() {
 // This method assumes readHeader method already called.
 Mat ImageCollection::Impl::readData() {
     int type = m_decoder->type();
-    if ((m_flags & IMREAD_LOAD_GDAL) != IMREAD_LOAD_GDAL && m_flags != IMREAD_UNCHANGED) {
-        if ((m_flags & IMREAD_ANYDEPTH) == 0)
+    if ((m_parameters.flags & IMREAD_LOAD_GDAL) != IMREAD_LOAD_GDAL && m_parameters.flags != IMREAD_UNCHANGED) {
+        if ((m_parameters.flags & IMREAD_ANYDEPTH) == 0)
             type = CV_MAKETYPE(CV_8U, CV_MAT_CN(type));
 
-        if ((m_flags & IMREAD_COLOR) != 0 ||
-            ((m_flags & IMREAD_ANYCOLOR) != 0 && CV_MAT_CN(type) > 1))
+        if ((m_parameters.flags & IMREAD_COLOR) != 0 ||
+            ((m_parameters.flags & IMREAD_ANYCOLOR) != 0 && CV_MAT_CN(type) > 1))
             type = CV_MAKETYPE(CV_MAT_DEPTH(type), 3);
         else
             type = CV_MAKETYPE(CV_MAT_DEPTH(type), 1);
@@ -1056,7 +1062,7 @@ Mat ImageCollection::Impl::readData() {
     if (!success)
         return cv::Mat();
 
-    if ((m_flags & IMREAD_IGNORE_ORIENTATION) == 0 && m_flags != IMREAD_UNCHANGED) {
+    if ((m_parameters.flags & IMREAD_IGNORE_ORIENTATION) == 0 && m_parameters.flags != IMREAD_UNCHANGED) {
         ApplyExifOrientation(m_decoder->getExifTag(ORIENTATION), mat);
     }
 
@@ -1067,11 +1073,15 @@ bool ImageCollection::Impl::advance() {  ++m_current; m_decoder->readHeader(); r
 
 int ImageCollection::Impl::currentIndex() const { return m_current; }
 
+ICParams ImageCollection::Impl::parameters() const { return m_parameters; }
+
 ImageCollection::ImageCollection() : pImpl(new Impl()) {}
 
-ImageCollection::ImageCollection(const std::string& filename, int flags) : pImpl(new Impl(filename, flags)) {}
+ImageCollection::ImageCollection(ICParams parameters) : pImpl(new Impl(std::move(parameters))) {}
 
-void ImageCollection::init(const String& img, int flags) { pImpl->init(img, flags); }
+void ImageCollection::init(ICParams parameters) { pImpl->init(std::move(parameters)); }
+
+ICParams ImageCollection::parameters() const { return pImpl->parameters(); }
 
 size_t ImageCollection::size() const { return pImpl->size(); }
 
@@ -1099,7 +1109,13 @@ ImageCollection::iterator& ImageCollection::iterator::operator++() {
 }
 
 ImageCollection::iterator ImageCollection::iterator::operator++(int) {
-    iterator tmp = *this;
+    iterator tmp(nullptr);
+    ICParams parameters = m_ref->parameters();
+    tmp.m_ref = new ImageCollection(parameters);
+    tmp.m_ref->pImpl->init(parameters);
+    for(int i = 0; i < m_curr; ++i) {
+        ++(tmp);
+    }
     ++(*this);
     return tmp;
 }

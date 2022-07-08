@@ -500,8 +500,21 @@ static bool
 imreadmulti_(const String& filename, int flags, std::vector<Mat>& mats, int start, int count)
 {
     CV_CheckGE(start, 0, "Start index can not be < 0");
+    ImageCollection collection;
 
-    ImageCollection collection(filename, flags);
+    try {
+        collection.init(filename, flags);
+    } catch (const cv::Exception& e)
+    {
+        std::cerr << "imreadmulti_('" << filename << "'): can't read header: " << e.what() << std::endl << std::flush;
+        return 0;
+    }
+    catch (...)
+    {
+        std::cerr << "imreadmulti_('" << filename << "'): can't read header: unknown exception" << std::endl << std::flush;
+        return 0;
+    }
+
     ImageCollection::iterator iter = collection.begin();
 
     if(collection.size() < (size_t)start)
@@ -512,10 +525,18 @@ imreadmulti_(const String& filename, int flags, std::vector<Mat>& mats, int star
         }
     }
 
-
-    for(size_t i = 0; i < (size_t)count && i < collection.size(); ++i) {
-        mats.push_back(*iter);
-        iter++;
+    try{
+        for(size_t i = 0; i < (size_t)count && i < collection.size(); ++i) {
+            mats.push_back(*iter);
+            iter++;
+        }
+    } catch (const cv::Exception& e)
+    {
+        std::cerr << "imreadmulti_('" << filename << "'): can't read data: " << e.what() << std::endl << std::flush;
+    }
+    catch (...)
+    {
+        std::cerr << "imreadmulti_('" << filename << "'): can't read data: unknown exception" << std::endl << std::flush;
     }
 
     return !mats.empty();
@@ -955,25 +976,12 @@ void ImageCollection::Impl::init(String const& filename, int flags) {
 
     m_decoder->setSource(filename);
 
-    try {
-
-        if (!m_decoder->readHeader())
-            throw cv::Exception(1, "Can not read image header in ImageCollection" +
+    if (!m_decoder->readHeader())
+        throw cv::Exception(1, "Can not read image header in ImageCollection" +
                                 String(" file named " + m_filename),
                                 String("ImageCollection::Constructor"),
                                 __FILE__,
                                 __LINE__);
-    }
-    catch (const cv::Exception& e)
-    {
-        std::cerr << "ImageCollection class:: can't read header: " << e.what() << std::endl << std::flush;
-        throw cv::Exception();
-    }
-    catch (...)
-    {
-        std::cerr << "ImageCollection class:: can't read header: unknown exception" << std::endl << std::flush;
-        throw cv::Exception();
-    }
 
     size_t count = 1;
     while(m_decoder->nextPage()) count++;

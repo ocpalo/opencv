@@ -1109,16 +1109,10 @@ ImageCollection::iterator& ImageCollection::iterator::operator++() {
 }
 
 ImageCollection::iterator ImageCollection::iterator::operator++(int) {
-    iterator tmp(nullptr);
-    ICParams parameters = m_ref->parameters();
-    tmp.m_ref = new ImageCollection(parameters);
-    tmp.m_ref->pImpl->init(parameters);
-    for(int i = 0; i < m_curr; ++i) {
-        ++(tmp);
-    }
     ++(*this);
     return tmp;
 }
+
 
 }
 

@@ -337,7 +337,7 @@ TEST(Imgcodecs_Image, multipage_collection_iterator)
         prev = curr;
     }
 
-    collection.init({src_name, IMREAD_ANYCOLOR});
+    collection.init(parameters);
     auto collbegin = collection.begin();
     prev = *collbegin;
     for(size_t i = 0; i < collection.size(); ++i) {
@@ -352,7 +352,7 @@ TEST(Imgcodecs_Image, multipage_collection_iterator)
         collbegin++;
     }
 
-    collection.init({src_name, IMREAD_ANYCOLOR});
+    collection.init(parameters);
     count = 0;
     auto mat = collection.begin().operator*();
     for(auto it = collection.begin(); it != collection.end(); ++it) {

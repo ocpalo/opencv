@@ -503,7 +503,10 @@ imreadmulti_(const String& filename, int flags, std::vector<Mat>& mats, int star
     ImageCollection collection;
 
     try {
-        collection.init({filename, flags});
+        ICParams parameters;
+        parameters.filename = filename;
+        parameters.flags = flags;
+        collection.init(parameters);
     } catch (const cv::Exception& e)
     {
         std::cerr << "imreadmulti_('" << filename << "'): can't read header: " << e.what() << std::endl << std::flush;
@@ -593,7 +596,10 @@ static
 size_t imcount_(const String& filename, int flags)
 {
     try {
-        ImageCollection collection({filename, flags});
+        ICParams parameters;
+        parameters.filename = filename;
+        parameters.flags = flags;
+        ImageCollection collection(parameters);
         return collection.size();
     }
     catch (const cv::Exception& e)

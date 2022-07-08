@@ -332,12 +332,16 @@ CV_EXPORTS_W bool haveImageReader( const String& filename );
  */
 CV_EXPORTS_W bool haveImageWriter( const String& filename );
 
+/** @brief To read Multi Page images on demand
+
+The ImageCollection class provides iterator API to read multi page images on demand. Create iterator
+ to the collection of the images and iterate over the collection. Decode the necessary page with operator*.
+*/
 class CV_EXPORTS ImageCollection {
 public:
     struct iterator {
-        iterator(ImageCollection& ref);
-        iterator(ImageCollection& ref, int end);
-
+        iterator(ImageCollection* ref);
+        iterator(ImageCollection* ref, int end);
         Mat operator*();
         iterator& operator++();
         iterator operator++(int);
@@ -345,28 +349,20 @@ public:
         friend bool operator!= (const iterator& a, const iterator& b) { return a.m_curr != b.m_curr; };
 
     private:
-        ImageCollection& m_ref;
+        ImageCollection* m_ref;
         int m_curr;
     };
 
     ImageCollection();
     ImageCollection(const String& filename, int flags);
-
-    void setup(const String& img, int flags);
+    void init(const String& img, int flags);
     size_t size() const;
-    Mat read();
-    int width() const ;
-    int height() const ;
-    bool readHeader();
-    Mat readData();
-    bool advance();
-    int currentIndex();
     iterator begin();
     iterator end();
 
 private:
-    class IImageCollection;
-    Ptr<IImageCollection> pImpl;
+    class Impl;
+    Ptr<Impl> pImpl;
 };
 
 //! @} imgcodecs

@@ -310,27 +310,15 @@ TEST(Imgcodecs_Image, multipage_collection_size)
     EXPECT_EQ((size_t)6, collection.size());
 }
 
-
-TEST(Imgcodecs_Image, multipage_collection_read)
-{
-    const string src_name = TS::ptr()->get_data_path() + "readwrite/multipage.tif";
-    ImageCollection collection(src_name, IMREAD_ANYCOLOR);
-
-    auto c = collection.read();
-    collection.advance();
-    auto c2 = collection.read();
-    bool isEqual = (sum(c != c2) == Scalar(0,0,0,0));
-    ASSERT_FALSE(isEqual);
-}
-
-
 TEST(Imgcodecs_Image, multipage_collection_iterator)
 {
     const string src_name = TS::ptr()->get_data_path() + "readwrite/multipage.tif";
     ImageCollection collection(src_name, IMREAD_ANYCOLOR);
 
     int count = 0;
-    auto prev = collection.read();
+    auto prev = collection.begin().operator*();
+
+    // Test if each page is different from each other. In the multipage.tif file each page is different.
     for(auto&& i : collection) {
         // pass first image
         if(count == 0) {
@@ -345,16 +333,10 @@ TEST(Imgcodecs_Image, multipage_collection_iterator)
 }
 
 
-TEST(Imgcodecs_Image, multipage_collection_iterbegin_after_advance)
+TEST(Imgcodecs_Image, imagecollection_countpages)
 {
     const string src_name = TS::ptr()->get_data_path() + "readwrite/multipage.tif";
     ImageCollection collection(src_name, IMREAD_ANYCOLOR);
-
-    // suppose we already decoded 2 pages but after some action, we want to iterate from beginning
-    collection.advance();
-    collection.advance();
-
-    // begin checks if currentIndex is not equal to 0, it reinitialize decoder
     int count = 0;
     for(auto&&i : collection) {
         count++;

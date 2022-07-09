@@ -306,20 +306,14 @@ TEST(Imgcodecs_Image, write_umat)
 TEST(Imgcodecs_Image, multipage_collection_size)
 {
     const string src_name = TS::ptr()->get_data_path() + "readwrite/multipage.tif";
-    ICParams parameters;
-    parameters.filename = src_name;
-    parameters.flags = IMREAD_ANYCOLOR;
-    ImageCollection collection(parameters);
+    ImageCollection collection(src_name, IMREAD_ANYCOLOR);
     EXPECT_EQ((size_t)6, collection.size());
 }
 
 TEST(Imgcodecs_Image, multipage_collection_iterator)
 {
     const string src_name = TS::ptr()->get_data_path() + "readwrite/multipage.tif";
-    ICParams parameters;
-    parameters.filename = src_name;
-    parameters.flags = IMREAD_ANYCOLOR;
-    ImageCollection collection(parameters);
+    ImageCollection collection(src_name, IMREAD_ANYCOLOR);
 
     int count = 0;
     auto prev = collection.begin().operator*();
@@ -337,7 +331,7 @@ TEST(Imgcodecs_Image, multipage_collection_iterator)
         prev = curr;
     }
 
-    collection.init(parameters);
+    collection.init(src_name, IMREAD_ANYCOLOR);
     auto collbegin = collection.begin();
     prev = *collbegin;
     for(size_t i = 0; i < collection.size(); ++i) {
@@ -352,18 +346,18 @@ TEST(Imgcodecs_Image, multipage_collection_iterator)
         collbegin++;
     }
 
-    collection.init(parameters);
+    collection.init(src_name, IMREAD_ANYCOLOR);
     count = 0;
-    auto mat = collection.begin().operator*();
+    auto firstpage = collection.begin().operator*();
     for(auto it = collection.begin(); it != collection.end(); ++it) {
         if(count == 0) {
             count++;
             continue;
         }
-        auto currentMat = *it;
-        bool isEqual = (sum(mat != currentMat) == Scalar(0,0,0,0));
+        auto currentpage = *it;
+        bool isEqual = (sum(firstpage != currentpage) == Scalar(0,0,0,0));
         ASSERT_FALSE(isEqual);
-        mat = currentMat;
+        firstpage = currentpage;
     }
 }
 
@@ -371,10 +365,7 @@ TEST(Imgcodecs_Image, multipage_collection_iterator)
 TEST(Imgcodecs_Image, imagecollection_countpages)
 {
     const string src_name = TS::ptr()->get_data_path() + "readwrite/multipage.tif";
-    ICParams parameters;
-    parameters.filename = src_name;
-    parameters.flags = IMREAD_ANYCOLOR;
-    ImageCollection collection(parameters);
+    ImageCollection collection(src_name, IMREAD_ANYCOLOR);
     int count = 0;
     for(auto&&i : collection) {
         count++;

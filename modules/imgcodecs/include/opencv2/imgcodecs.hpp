@@ -332,11 +332,6 @@ CV_EXPORTS_W bool haveImageReader( const String& filename );
  */
 CV_EXPORTS_W bool haveImageWriter( const String& filename );
 
-struct CV_EXPORTS ICParams {
-    String filename;
-    int flags;
-};
-
 /** @brief To read Multi Page images on demand
 
 The ImageCollection class provides iterator API to read multi page images on demand. Create iterator
@@ -359,9 +354,8 @@ public:
     };
 
     ImageCollection();
-    explicit ImageCollection(ICParams parameters);
-    void init(ICParams parameters);
-    ICParams parameters() const;
+    ImageCollection(const String& filename, int flags);
+    void init(const String& img, int flags);
     size_t size() const;
     iterator begin();
     iterator end();

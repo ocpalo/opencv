@@ -931,6 +931,7 @@ public:
     size_t size() const;
     Mat at(int index);
     Mat operator[](int index);
+    void release(int index);
     ImageCollection::iterator begin(ImageCollection* ptr);
     ImageCollection::iterator end(ImageCollection* ptr);
     Mat read();
@@ -1122,6 +1123,15 @@ Mat ImageCollection::Impl::operator[](int index) {
     return m_pages[index];
 }
 
+void ImageCollection::Impl::release(int index) {
+    if(index < 0 || (size_t)index >= m_size)
+        throw cv::Exception(1, "Index out of bounds",
+                            String("ImageCollection::at"),
+                            __FILE__,
+                            __LINE__);
+    m_pages[index].release();
+}
+
 /* ImageCollection API*/
 
 ImageCollection::ImageCollection() : pImpl(new Impl()) {}
@@ -1135,6 +1145,8 @@ size_t ImageCollection::size() const { return pImpl->size(); }
 Mat ImageCollection::at(int index) { return pImpl->at(index); }
 
 Mat ImageCollection::operator[](int index) { return pImpl->operator[](index); }
+
+void ImageCollection::release(int index) { pImpl->release(index); }
 
 ImageCollection::iterator ImageCollection::begin() { return pImpl->begin(this); }
 

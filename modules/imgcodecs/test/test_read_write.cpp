@@ -345,6 +345,7 @@ TEST(Imgcodecs_Image, multipage_collection_iterator)
     }
 
     {
+        // postfix operator++ test
         ImageCollection collection(filename, IMREAD_ANYCOLOR);
         auto firstIter = collection.begin();
         auto secondIter = firstIter++;
@@ -361,7 +362,13 @@ TEST(Imgcodecs_Image, multipage_collection_iterator)
             double diff = cv::norm(collection[i], imread(page_files[i]), NORM_INF);
             EXPECT_EQ(diff, 0.);
         }
-        
+
+        for(int i = 0; i < collection.size(); ++i) {
+            collection.release(i);
+        }
+
+        double diff = cv::norm(collection[2], imread(page_files[2]), NORM_INF);
+        EXPECT_EQ(diff, 0.);
     }
 }
 

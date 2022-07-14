@@ -360,6 +360,7 @@ public:
     size_t size() const;
     Mat at(int index);
     Mat operator[](int index);
+    void release(int index);
     iterator begin();
     iterator end();
 

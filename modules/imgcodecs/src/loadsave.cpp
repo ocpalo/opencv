@@ -1160,7 +1160,9 @@ Mat ImageCollection::iterator::operator*() {
 }
 
 ImageCollection::iterator& ImageCollection::iterator::operator++() {
-    m_pCollection->pImpl->advance();
+    if(m_pCollection->pImpl->currentIndex() == m_curr) {
+        m_pCollection->pImpl->advance();
+    }
     m_curr++;
     return *this;
 }

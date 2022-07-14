@@ -334,7 +334,7 @@ TEST(Imgcodecs_Image, multipage_collection_iterator)
 
         // Decode all odd pages then decode even pages -> 1, 0, 3, 2 ...
         firstIter++;
-        for(int i = 1; i < collection.size(); i += 2, ++firstIter, ++firstIter, ++secondIter, ++secondIter) {
+        for(size_t i = 1; i < collection.size(); i += 2, ++firstIter, ++firstIter, ++secondIter, ++secondIter) {
             Mat mat = *firstIter;
             double diff = cv::norm(mat, imread(page_files[i]), NORM_INF);
             EXPECT_EQ(diff, 0.);
@@ -352,6 +352,16 @@ TEST(Imgcodecs_Image, multipage_collection_iterator)
         // firstIter points to second page, secondIter points to first page
         double diff = cv::norm(*firstIter, *secondIter, NORM_INF);
         EXPECT_NE(diff, 0.);
+    }
+
+    {
+        ImageCollection collection(filename, IMREAD_ANYCOLOR);
+        // backward decoding -> 5,4,3,2,1,0
+        for(int i = (int)collection.size() - 1; i >= 0; --i) {
+            double diff = cv::norm(collection[i], imread(page_files[i]), NORM_INF);
+            EXPECT_EQ(diff, 0.);
+        }
+        
     }
 }
 

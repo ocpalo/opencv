@@ -303,61 +303,55 @@ TEST(Imgcodecs_Image, write_umat)
     EXPECT_EQ(0, remove(dst_name.c_str()));
 }
 
-TEST(Imgcodecs_Image, multipage_collection_size)
-{
-    const string src_name = TS::ptr()->get_data_path() + "readwrite/multipage.tif";
-    ImageCollection collection(src_name, IMREAD_ANYCOLOR);
-    EXPECT_EQ((size_t)6, collection.size());
-}
-
 TEST(Imgcodecs_Image, multipage_collection_iterator)
 {
-    const string src_name = TS::ptr()->get_data_path() + "readwrite/multipage.tif";
-    ImageCollection collection(src_name, IMREAD_ANYCOLOR);
+    const string root = cvtest::TS::ptr()->get_data_path();
+    const string filename = root + "readwrite/multipage.tif";
+    const string page_files[] = {
+            root + "readwrite/multipage_p1.tif",
+            root + "readwrite/multipage_p2.tif",
+            root + "readwrite/multipage_p3.tif",
+            root + "readwrite/multipage_p4.tif",
+            root + "readwrite/multipage_p5.tif",
+            root + "readwrite/multipage_p6.tif"
+    };
 
-    int count = 0;
-    auto prev = collection.begin().operator*();
+    {
+        ImageCollection collection(filename, IMREAD_ANYCOLOR);
+        EXPECT_EQ(collection.size(), 6);
 
-    // Test if each page is different from each other. In the multipage.tif file each page is different.
-    for(auto&& i : collection) {
-        // pass first image
-        if(count == 0) {
-            count++;
-            continue;
+        auto collectionBegin = collection.begin();
+        for(size_t i = 0; i < collection.size(); ++i, ++collectionBegin) {
+            double diff = cv::norm(collectionBegin.operator*(), imread(page_files[i]), NORM_INF);
+            EXPECT_EQ(diff, 0.);
         }
-        auto curr = i;
-        bool isEqual = (sum(prev != curr) == Scalar(0,0,0,0));
-        ASSERT_FALSE(isEqual);
-        prev = curr;
     }
 
-    collection.init(src_name, IMREAD_ANYCOLOR);
-    auto collbegin = collection.begin();
-    prev = *collbegin;
-    for(size_t i = 0; i < collection.size(); ++i) {
-        if(i == 0) {
-            collbegin++;
-            continue;
+    {
+        ImageCollection collection(filename, IMREAD_ANYCOLOR);
+        auto firstIter = collection.begin();
+        auto secondIter = collection.begin();
+
+        // Decode all odd pages then decode even pages -> 1, 0, 3, 2 ...
+        firstIter++;
+        for(int i = 1; i < collection.size(); i += 2, ++firstIter, ++firstIter, ++secondIter, ++secondIter) {
+            Mat mat = *firstIter;
+            double diff = cv::norm(mat, imread(page_files[i]), NORM_INF);
+            EXPECT_EQ(diff, 0.);
+            Mat evenMat = *secondIter;
+            diff = cv::norm(evenMat, imread(page_files[i-1]), NORM_INF);
+            EXPECT_EQ(diff, 0.);
         }
-        auto curr = *collbegin;
-        bool isEqual = (sum(prev != curr) == Scalar(0,0,0,0));
-        ASSERT_FALSE(isEqual);
-        prev = curr;
-        collbegin++;
     }
 
-    collection.init(src_name, IMREAD_ANYCOLOR);
-    count = 0;
-    auto firstpage = collection.begin().operator*();
-    for(auto it = collection.begin(); it != collection.end(); ++it) {
-        if(count == 0) {
-            count++;
-            continue;
-        }
-        auto currentpage = *it;
-        bool isEqual = (sum(firstpage != currentpage) == Scalar(0,0,0,0));
-        ASSERT_FALSE(isEqual);
-        firstpage = currentpage;
+    {
+        ImageCollection collection(filename, IMREAD_ANYCOLOR);
+        auto firstIter = collection.begin();
+        auto secondIter = firstIter++;
+
+        // firstIter points to second page, secondIter points to first page
+        double diff = cv::norm(*firstIter, *secondIter, NORM_INF);
+        EXPECT_NE(diff, 0.);
     }
 }
 

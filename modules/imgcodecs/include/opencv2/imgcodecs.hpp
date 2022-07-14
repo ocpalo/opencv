@@ -340,8 +340,8 @@ The ImageCollection class provides iterator API to read multi page images on dem
 class CV_EXPORTS ImageCollection {
 public:
     struct iterator {
-        iterator(ImageCollection* ref);
-        iterator(ImageCollection* ref, int end);
+        iterator(ImageCollection* col, std::vector<Mat>* ref);
+        iterator(ImageCollection* col, std::vector<Mat>* ref, int end);
         Mat operator*();
         iterator& operator++();
         iterator operator++(int);
@@ -349,7 +349,8 @@ public:
         friend bool operator!= (const iterator& a, const iterator& b) { return a.m_curr != b.m_curr; };
 
     private:
-        ImageCollection* m_ref;
+        ImageCollection* m_pCollection;
+        std::vector<cv::Mat>* m_container;
         int m_curr;
     };
 
@@ -357,6 +358,8 @@ public:
     ImageCollection(const String& filename, int flags);
     void init(const String& img, int flags);
     size_t size() const;
+    Mat at(int index);
+    Mat operator[](int index);
     iterator begin();
     iterator end();
 

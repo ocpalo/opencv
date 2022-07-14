@@ -927,8 +927,12 @@ class ImageCollection::Impl {
 public:
     Impl() = default;
     Impl(const std::string&  filename, int flags);
-    void init(String const& img, int flags);
+    void init(String const& filename, int flags);
     size_t size() const;
+    Mat at(int index);
+    Mat operator[](int index);
+    ImageCollection::iterator begin(ImageCollection* ptr);
+    ImageCollection::iterator end(ImageCollection* ptr);
     Mat read();
     int width() const;
     int height() const;
@@ -936,6 +940,7 @@ public:
     Mat readData();
     bool advance();
     int currentIndex() const;
+    void reinit();
 
 private:
     String m_filename;
@@ -944,6 +949,7 @@ private:
     int m_width{};
     int m_height{};
     int m_current{};
+    std::vector<cv::Mat> m_pages;
     ImageDecoder m_decoder;
 };
 
@@ -983,10 +989,12 @@ void ImageCollection::Impl::init(String const& filename, int flags) {
                                 __FILE__,
                                 __LINE__);
 
+    // count the pages of the image collection
     size_t count = 1;
     while(m_decoder->nextPage()) count++;
 
     m_size = count;
+    m_pages.resize(m_size);
     // Reinitialize the decoder because we advanced to the last page while counting the pages of the image
 #ifdef HAVE_GDAL
     if (m_flags != IMREAD_UNCHANGED && (m_flags & IMREAD_LOAD_GDAL) == IMREAD_LOAD_GDAL) {
@@ -1000,12 +1008,16 @@ void ImageCollection::Impl::init(String const& filename, int flags) {
 #endif
 
     m_decoder->setSource(m_filename);
+    m_decoder->readHeader();
 }
 
 size_t ImageCollection::Impl::size() const { return m_size; }
 
 Mat ImageCollection::Impl::read() {
-    this->readHeader();
+    auto result = this->readHeader();
+    if(!result) {
+        return {};
+    }
     return this->readData();
 }
 
@@ -1024,7 +1036,7 @@ bool ImageCollection::Impl::readHeader() {
     return status;
 }
 
-// This method assumes readHeader method already called.
+// readHeader must be called before calling this method
 Mat ImageCollection::Impl::readData() {
     int type = m_decoder->type();
     if ((m_flags & IMREAD_LOAD_GDAL) != IMREAD_LOAD_GDAL && m_flags != IMREAD_UNCHANGED) {
@@ -1067,6 +1079,51 @@ bool ImageCollection::Impl::advance() {  ++m_current; m_decoder->readHeader(); r
 
 int ImageCollection::Impl::currentIndex() const { return m_current; }
 
+ImageCollection::iterator ImageCollection::Impl::begin(ImageCollection* ptr) { return ImageCollection::iterator(ptr, &m_pages); }
+
+ImageCollection::iterator ImageCollection::Impl::end(ImageCollection* ptr) { return ImageCollection::iterator(ptr, &m_pages, this->size()); }
+
+void ImageCollection::Impl::reinit() {
+    m_current = 0;
+#ifdef HAVE_GDAL
+    if (m_flags != IMREAD_UNCHANGED && (m_flags & IMREAD_LOAD_GDAL) == IMREAD_LOAD_GDAL) {
+        m_decoder = GdalDecoder().newDecoder();
+    }
+    else {
+#endif
+    m_decoder = findDecoder(m_filename);
+#ifdef HAVE_GDAL
+    }
+#endif
+
+    m_decoder->setSource(m_filename);
+    m_decoder->readHeader();
+}
+
+Mat ImageCollection::Impl::at(int index) {
+    if(index < 0 || (size_t)index >= m_size)
+        throw cv::Exception(1, "Index out of bounds",
+                            String("ImageCollection::at"),
+                            __FILE__,
+                            __LINE__);
+    return operator[](index);
+}
+
+Mat ImageCollection::Impl::operator[](int index) {
+    if(m_pages[index].empty()) {
+        // We can't go backward in multi images. If the page is not in vector yet,
+        // go back to first page and advance until the desired page and read it into memory
+        if(m_current != index) {
+            reinit();
+            for(int i = 0; i != index && advance(); ++i) {}
+        }
+        m_pages[index] = read();
+    }
+    return m_pages[index];
+}
+
+/* ImageCollection API*/
+
 ImageCollection::ImageCollection() : pImpl(new Impl()) {}
 
 ImageCollection::ImageCollection(const std::string& filename, int flags) : pImpl(new Impl(filename, flags)) {}
@@ -1075,25 +1132,35 @@ void ImageCollection::init(const String& img, int flags) { pImpl->init(img, flag
 
 size_t ImageCollection::size() const { return pImpl->size(); }
 
-ImageCollection::iterator ImageCollection::begin() {
-    return ImageCollection::iterator(this);
-}
+Mat ImageCollection::at(int index) { return pImpl->at(index); }
 
-ImageCollection::iterator ImageCollection::end() {
-    return ImageCollection::iterator(this, this->size());
-}
+Mat ImageCollection::operator[](int index) { return pImpl->operator[](index); }
 
-ImageCollection::iterator::iterator(ImageCollection* ref) : m_ref(ref), m_curr(0) {}
+ImageCollection::iterator ImageCollection::begin() { return pImpl->begin(this); }
 
-ImageCollection::iterator::iterator(ImageCollection* ref, int end) : m_ref(ref), m_curr(end) {}
+ImageCollection::iterator ImageCollection::end() { return pImpl->end(this); }
+
+/* Iterator API */
+
+ImageCollection::iterator::iterator(ImageCollection* col, std::vector<Mat>* ref) : m_pCollection(col) ,m_container(ref), m_curr(0) {}
+
+ImageCollection::iterator::iterator(ImageCollection* col, std::vector<Mat>* ref, int end) : m_pCollection(col) ,m_container(ref), m_curr(end) {}
 
 Mat ImageCollection::iterator::operator*() {
-    m_ref->pImpl->readHeader();
-    return m_ref->pImpl->readData();
+    if((*m_container)[m_curr].empty()) {
+        if(m_curr != m_pCollection->pImpl->currentIndex()) {
+            // We can't go backward in multi images. If the page is not in vector yet,
+            // go back to first page and advance until the desired page and read it into memory
+            m_pCollection->pImpl->reinit();
+            for(int i = 0; i != m_curr && m_pCollection->pImpl->advance(); ++i) {}
+        }
+        m_container->operator[](m_curr) = m_pCollection->pImpl->read();
+    }
+    return {m_container->operator[](m_curr)};
 }
 
 ImageCollection::iterator& ImageCollection::iterator::operator++() {
-    m_ref->pImpl->advance();
+    m_pCollection->pImpl->advance();
     m_curr++;
     return *this;
 }

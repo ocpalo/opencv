@@ -363,7 +363,7 @@ TEST(Imgcodecs_Image, multipage_collection_iterator)
             EXPECT_EQ(diff, 0.);
         }
 
-        for(int i = 0; i < collection.size(); ++i) {
+        for(int i = 0; i < (int)collection.size(); ++i) {
             collection.release(i);
         }
 

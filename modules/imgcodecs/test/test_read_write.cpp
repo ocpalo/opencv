@@ -318,7 +318,7 @@ TEST(Imgcodecs_Image, multipage_collection_iterator)
 
     {
         ImageCollection collection(filename, IMREAD_ANYCOLOR);
-        EXPECT_EQ(collection.size(), 6);
+        EXPECT_EQ(collection.size(), (std::size_t)6);
 
         auto collectionBegin = collection.begin();
         for(size_t i = 0; i < collection.size(); ++i, ++collectionBegin) {

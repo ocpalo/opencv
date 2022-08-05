@@ -15,8 +15,52 @@ endif()
 
 message(STATUS "libjpeg-turbo: VERSION = ${VERSION}, BUILD = ${BUILD}")
 
+math(EXPR BITS "${CMAKE_SIZEOF_VOID_P} * 8")
+string(TOLOWER ${CMAKE_SYSTEM_PROCESSOR} CMAKE_SYSTEM_PROCESSOR_LC)
+
+if(CMAKE_SYSTEM_PROCESSOR_LC MATCHES "x86_64" OR
+  CMAKE_SYSTEM_PROCESSOR_LC MATCHES "amd64" OR
+  CMAKE_SYSTEM_PROCESSOR_LC MATCHES "i[0-9]86" OR
+  CMAKE_SYSTEM_PROCESSOR_LC MATCHES "x86" OR
+  CMAKE_SYSTEM_PROCESSOR_LC MATCHES "ia32")
+  if(BITS EQUAL 64 OR CMAKE_C_COMPILER_ABI MATCHES "ELF X32")
+    set(CPU_TYPE x86_64)
+  else()
+    set(CPU_TYPE i386)
+  endif()
+  if(NOT CMAKE_SYSTEM_PROCESSOR STREQUAL ${CPU_TYPE})
+    set(CMAKE_SYSTEM_PROCESSOR ${CPU_TYPE})
+  endif()
+elseif(CMAKE_SYSTEM_PROCESSOR_LC STREQUAL "aarch64" OR
+  CMAKE_SYSTEM_PROCESSOR_LC MATCHES "^arm")
+  if(BITS EQUAL 64)
+    set(CPU_TYPE arm64)
+  else()
+    set(CPU_TYPE arm)
+  endif()
+elseif(CMAKE_SYSTEM_PROCESSOR_LC MATCHES "^ppc" OR
+  CMAKE_SYSTEM_PROCESSOR_LC MATCHES "^powerpc")
+  set(CPU_TYPE powerpc)
+else()
+  set(CPU_TYPE ${CMAKE_SYSTEM_PROCESSOR_LC})
+endif()
+if(CMAKE_OSX_ARCHITECTURES MATCHES "x86_64" OR
+  CMAKE_OSX_ARCHITECTURES MATCHES "arm64" OR
+  CMAKE_OSX_ARCHITECTURES MATCHES "i386")
+  set(CPU_TYPE ${CMAKE_OSX_ARCHITECTURES})
+endif()
+if(CMAKE_OSX_ARCHITECTURES MATCHES "ppc")
+  set(CPU_TYPE powerpc)
+endif()
+if(MSVC_IDE AND CMAKE_GENERATOR_PLATFORM MATCHES "arm64")
+  set(CPU_TYPE arm64)
+endif()
+
+message(STATUS "${BITS}-bit build (${CPU_TYPE})")
+
 option(WITH_ARITH_ENC "Include arithmetic encoding support when emulating the libjpeg v6b API/ABI" TRUE)
 option(WITH_ARITH_DEC "Include arithmetic decoding support when emulating the libjpeg v6b API/ABI" TRUE)
+set(WITH_SIMD 1)
 
 include(CheckCSourceCompiles)
 include(CheckIncludeFiles)
@@ -27,7 +71,7 @@ check_type_size("unsigned long" SIZEOF_UNSIGNED_LONG)
 
 if(SIZEOF_SIZE_T EQUAL SIZEOF_UNSIGNED_LONG)
   check_c_source_compiles("int main(int argc, char **argv) { unsigned long a = argc;  return __builtin_ctzl(a); }"
-    HAVE_BUILTIN_CTZL)
+          HAVE_BUILTIN_CTZL)
 endif()
 if(MSVC)
   check_include_files("intrin.h" HAVE_INTRIN_H)
@@ -36,7 +80,7 @@ endif()
 if(UNIX)
   # Check for headers
   check_include_files(locale.h HAVE_LOCALE_H)
-  check_include_files(stddef.h HAVE_STDDEF_H)
+  check_include_files(stddef.h HAVE_STDDEF_H) 
   check_include_files(stdlib.h HAVE_STDLIB_H)
   check_include_files(sys/types.h NEED_SYS_TYPES_H)
 
@@ -99,20 +143,59 @@ if(WITH_ARITH_DEC)
   set(JPEG_SOURCES ${JPEG_SOURCES} jdarith.c)
 endif()
 
-# No SIMD
-set(JPEG_SOURCES ${JPEG_SOURCES} jsimd_none.c)
+if(MSVC)
+  option(WITH_CRT_DLL
+    "Link all ${CMAKE_PROJECT_NAME} libraries and executables with the C run-time DLL (msvcr*.dll) instead of the static C run-time library (libcmt*.lib.)  The default is to use the C run-time DLL only with the libraries and executables that need it."
+    FALSE)
+  if(NOT WITH_CRT_DLL)
+    # Use the static C library for all build types
+    foreach(var CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
+      CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
+      if(${var} MATCHES "/MD")
+        string(REGEX REPLACE "/MD" "/MT" ${var} "${${var}}")
+      endif()
+    endforeach()
+  endif()
+  add_definitions(-D_CRT_NONSTDC_NO_WARNINGS)
+endif()
+
+message(STATUS ${WITH_LIBJPEG_TURBO_SIMD})
+if(WITH_LIBJPEG_TURBO_SIMD)
+  add_subdirectory(src/simd)
+  if(NEON_INTRINSICS)
+    add_definitions(-DNEON_INTRINSICS)
+  endif()
+else()
+  set(WITH_LIBJPEG_TURBO_SIMD 0 PARENT_SCOPE)
+  set(WITH_SIMD 0)
+endif()
+
+if(WITH_SIMD)
+  message(STATUS "SIMD extensions: ${CPU_TYPE} (WITH_SIMD = ${WITH_SIMD})")
+  if(MSVC_IDE OR XCODE)
+    set_source_files_properties(${SIMD_OBJS} PROPERTIES GENERATED 1)
+  endif()
+else()
+  set(WITH_LIBJPEG_TURBO_SIMD 0 PARENT_SCOPE)
+  add_library(simd OBJECT src/jsimd_none.c)
+  if(NOT WIN32 AND (CMAKE_POSITION_INDEPENDENT_CODE OR ENABLE_SHARED))
+    set_target_properties(simd PROPERTIES POSITION_INDEPENDENT_CODE 1)
+  endif()
+endif()
 
 ocv_list_add_prefix(JPEG_SOURCES src/)
 
-add_library(${JPEG_LIBRARY} STATIC ${OPENCV_3RDPARTY_EXCLUDE_FROM_ALL} ${JPEG_SOURCES} ${SIMD_OBJS})
+set(JPEG_SOURCES ${JPEG_SOURCES} ${SIMD_OBJS})
+
+add_library(${JPEG_LIBRARY} STATIC ${OPENCV_3RDPARTY_EXCLUDE_FROM_ALL} ${JPEG_SOURCES} $<TARGET_OBJECTS:simd> ${SIMD_OBJS})
 
 set_target_properties(${JPEG_LIBRARY}
-  PROPERTIES OUTPUT_NAME ${JPEG_LIBRARY}
-  DEBUG_POSTFIX "${OPENCV_DEBUG_POSTFIX}"
-  COMPILE_PDB_NAME ${JPEG_LIBRARY}
-  COMPILE_PDB_NAME_DEBUG "${JPEG_LIBRARY}${OPENCV_DEBUG_POSTFIX}"
-  ARCHIVE_OUTPUT_DIRECTORY ${3P_LIBRARY_OUTPUT_PATH}
-  )
+        PROPERTIES OUTPUT_NAME ${JPEG_LIBRARY}
+        DEBUG_POSTFIX "${OPENCV_DEBUG_POSTFIX}"
+        COMPILE_PDB_NAME ${JPEG_LIBRARY}
+        COMPILE_PDB_NAME_DEBUG "${JPEG_LIBRARY}${OPENCV_DEBUG_POSTFIX}"
+        ARCHIVE_OUTPUT_DIRECTORY ${3P_LIBRARY_OUTPUT_PATH}
+        )
 
 if(ENABLE_SOLUTION_FOLDERS)
   set_target_properties(${JPEG_LIBRARY} PROPERTIES FOLDER "3rdparty")

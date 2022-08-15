@@ -162,6 +162,21 @@ enum ImwritePAMFlags {
 
 //! @} imgcodecs_flags
 
+enum class ImreadError {
+      OK,
+      UNKNOWN_FILE_TYPE,
+      SIZE_LIMIT_EXCEED,
+      READ_HEADER_FAIL,
+      READ_DATA_FAIL,
+     };
+
+struct ImreadParams {
+      std::string filename;
+      cv::Size maxSize {0, 0};
+      int flags = 0;
+      ImreadError* error = nullptr;
+     };
+
 /** @brief Loads an image from a file.
 
 @anchor imread

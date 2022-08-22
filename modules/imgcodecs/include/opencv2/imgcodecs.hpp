@@ -171,10 +171,9 @@ enum class ImreadError {
      };
 
 struct ImreadParams {
-      std::string filename;
       cv::Size maxSize {0, 0};
       int flags = 0;
-      ImreadError* error = nullptr;
+      OutputArray images;
      };
 
 /** @brief Loads an image from a file.
@@ -229,6 +228,8 @@ Currently, the following file formats are supported:
 @param flags Flag that can take values of cv::ImreadModes
 */
 CV_EXPORTS_W Mat imread( const String& filename, int flags = IMREAD_COLOR );
+
+CV_EXPORTS_W ImreadError imread( String const& filename, ImreadParams params);
 
 /** @brief Loads a multi-page image from a file.
 

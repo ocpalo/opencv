@@ -630,6 +630,21 @@ Mat imread( const String& filename, int flags )
     return img;
 }
 
+ImreadError imread( String const& filename, ImreadParams params)
+{
+    CV_TRACE_FUNCTION();
+
+    if(params.images.isVector())
+    {
+
+    }
+    else
+    {
+        
+    }
+    
+}
+
 /**
 * Read a multi-page image
 *

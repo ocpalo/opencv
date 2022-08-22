@@ -1148,27 +1148,24 @@ Mat ImageCollection::operator[](int index) { return pImpl->operator[](index); }
 
 void ImageCollection::release(int index) { pImpl->release(index); }
 
+Ptr<ImageCollection::Impl> ImageCollection::getImpl() { return pImpl; }
+
+/* Iterator API */
+
 ImageCollection::iterator ImageCollection::begin() { return pImpl->begin(this); }
 
 ImageCollection::iterator ImageCollection::end() { return pImpl->end(this); }
 
-/* Iterator API */
+ImageCollection::iterator::iterator(ImageCollection* col, std::vector<Mat>* ref) : m_pCollection(col), m_curr(0) {}
 
-ImageCollection::iterator::iterator(ImageCollection* col, std::vector<Mat>* ref) : m_pCollection(col) ,m_container(ref), m_curr(0) {}
-
-ImageCollection::iterator::iterator(ImageCollection* col, std::vector<Mat>* ref, int end) : m_pCollection(col) ,m_container(ref), m_curr(end) {}
+ImageCollection::iterator::iterator(ImageCollection* col, std::vector<Mat>* ref, int end) : m_pCollection(col), m_curr(end) {}
 
 Mat ImageCollection::iterator::operator*() {
-    if((*m_container)[m_curr].empty()) {
-        if(m_curr != m_pCollection->pImpl->currentIndex()) {
-            // We can't go backward in multi images. If the page is not in vector yet,
-            // go back to first page and advance until the desired page and read it into memory
-            m_pCollection->pImpl->reinit();
-            for(int i = 0; i != m_curr && m_pCollection->pImpl->advance(); ++i) {}
-        }
-        m_container->operator[](m_curr) = m_pCollection->pImpl->read();
+    if(m_pCollection == nullptr)
+    {
+        throw std::runtime_error("Invalid image collection");
     }
-    return {m_container->operator[](m_curr)};
+    return m_pCollection->getImpl()->operator[](m_curr);
 }
 
 ImageCollection::iterator& ImageCollection::iterator::operator++() {

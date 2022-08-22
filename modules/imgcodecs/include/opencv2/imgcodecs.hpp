@@ -350,7 +350,6 @@ public:
 
     private:
         ImageCollection* m_pCollection;
-        std::vector<cv::Mat>* m_container;
         int m_curr;
     };
 
@@ -364,8 +363,10 @@ public:
     iterator begin();
     iterator end();
 
-private:
     class Impl;
+    Ptr<Impl> getImpl();
+protected:
+
     Ptr<Impl> pImpl;
 };
 

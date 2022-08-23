@@ -1080,9 +1080,9 @@ bool ImageCollection::Impl::advance() {  ++m_current; m_decoder->readHeader(); r
 
 int ImageCollection::Impl::currentIndex() const { return m_current; }
 
-ImageCollection::iterator ImageCollection::Impl::begin(ImageCollection* ptr) { return ImageCollection::iterator(ptr, &m_pages); }
+ImageCollection::iterator ImageCollection::Impl::begin(ImageCollection* ptr) { return ImageCollection::iterator(ptr); }
 
-ImageCollection::iterator ImageCollection::Impl::end(ImageCollection* ptr) { return ImageCollection::iterator(ptr, &m_pages, this->size()); }
+ImageCollection::iterator ImageCollection::Impl::end(ImageCollection* ptr) { return ImageCollection::iterator(ptr, this->size()); }
 
 void ImageCollection::Impl::reinit() {
     m_current = 0;
@@ -1156,9 +1156,9 @@ ImageCollection::iterator ImageCollection::begin() { return pImpl->begin(this); 
 
 ImageCollection::iterator ImageCollection::end() { return pImpl->end(this); }
 
-ImageCollection::iterator::iterator(ImageCollection* col, std::vector<Mat>* ref) : m_pCollection(col), m_curr(0) {}
+ImageCollection::iterator::iterator(ImageCollection* col) : m_pCollection(col), m_curr(0) {}
 
-ImageCollection::iterator::iterator(ImageCollection* col, std::vector<Mat>* ref, int end) : m_pCollection(col), m_curr(end) {}
+ImageCollection::iterator::iterator(ImageCollection* col, int end) : m_pCollection(col), m_curr(end) {}
 
 Mat ImageCollection::iterator::operator*() {
     if(m_pCollection == nullptr)

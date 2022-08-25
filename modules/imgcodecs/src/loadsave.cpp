@@ -325,6 +325,45 @@ static ImageEncoder findEncoder( const String& _ext )
     return ImageEncoder();
 }
 
+static ImageDecoder findDecoder( const String& filename, ImreadError& error ) {
+
+    size_t i, maxlen = 0;
+
+    /// iterate through list of registered codecs
+    ImageCodecInitializer& codecs = getCodecs();
+    for( i = 0; i < codecs.decoders.size(); i++ )
+    {
+        size_t len = codecs.decoders[i]->signatureLength();
+        maxlen = std::max(maxlen, len);
+    }
+
+    /// Open the file
+    FILE* f= fopen( filename.c_str(), "rb" );
+
+    /// in the event of a failure, return an empty image decoder
+    if( !f ) {
+        error = ImreadError::FILE_NOT_FOUND;
+        CV_LOG_WARNING(NULL, "imread_('" << filename << "'): can't open/read file: check file path/integrity");
+        return ImageDecoder();
+    }
+
+    // read the file signature
+    String signature(maxlen, ' ');
+    maxlen = fread( (void*)signature.c_str(), 1, maxlen, f );
+    fclose(f);
+    signature = signature.substr(0, maxlen);
+
+    /// compare signature against all decoders
+    for( i = 0; i < codecs.decoders.size(); i++ )
+    {
+        if( codecs.decoders[i]->checkSignature(signature) )
+            return codecs.decoders[i]->newDecoder();
+    }
+
+    /// If no decoder was found, return base type
+    error = ImreadError::CODEC_SIGNATURE_FAIL;
+    return ImageDecoder();
+}
 
 static void ExifTransform(int orientation, Mat& img)
 {
@@ -492,6 +531,135 @@ imread_( const String& filename, int flags, Mat& mat )
     return true;
 }
 
+/**
+ * Read an image into memory and return the information
+ *
+ * @param[in] filename File to load
+ * @param[in] flags Flags
+ * @param[in] mat Reference to C++ Mat object (If LOAD_MAT)
+ *
+*/
+static ImreadError
+imread_v2( const String& filename, ImreadParams params )
+{
+    /// Search for the relevant decoder to handle the imagery
+    ImageDecoder decoder;
+    ImreadError error = ImreadError::OK;
+
+#ifdef HAVE_GDAL
+    if(flags != IMREAD_UNCHANGED && (flags & IMREAD_LOAD_GDAL) == IMREAD_LOAD_GDAL ){
+        decoder = GdalDecoder().newDecoder();
+    }else{
+#endif
+        decoder = findDecoder( filename, error );
+#ifdef HAVE_GDAL
+    }
+#endif
+
+    /// if no decoder was found, return nothing.
+    if( !decoder && error != ImreadError::OK){
+        return error;
+    }
+
+    int scale_denom = 1;
+    int flags = params.flags;
+    if( flags > IMREAD_LOAD_GDAL )
+    {
+        if( flags & IMREAD_REDUCED_GRAYSCALE_2 )
+            scale_denom = 2;
+        else if( flags & IMREAD_REDUCED_GRAYSCALE_4 )
+            scale_denom = 4;
+        else if( flags & IMREAD_REDUCED_GRAYSCALE_8 )
+            scale_denom = 8;
+    }
+
+    /// set the scale_denom in the driver
+    decoder->setScale( scale_denom );
+
+    /// set the filename in the driver
+    decoder->setSource( filename );
+
+    try
+    {
+        // read the header to make sure it succeeds
+        if( !decoder->readHeader() )
+            return ImreadError::READ_HEADER_FAIL;
+    }
+    catch (const cv::Exception& e)
+    {
+        std::cerr << "imread_('" << filename << "'): can't read header: " << e.what() << std::endl << std::flush;
+        return ImreadError::READ_HEADER_FAIL;
+    }
+    catch (...)
+    {
+        std::cerr << "imread_('" << filename << "'): can't read header: unknown exception" << std::endl << std::flush;
+        return ImreadError::READ_HEADER_UNKNOWN_FAIL;
+    }
+
+    // established the required input image size
+    Size size = validateInputImageSize(Size(decoder->width(), decoder->height()));
+
+    if(!params.maxSize.empty() && params.maxSize.height * params.maxSize.width < decoder->width() * decoder->height())
+    {
+        return ImreadError::SIZE_LIMIT_EXCEED;
+    }
+
+    // grab the decoded type
+    int type = decoder->type();
+    if( (flags & IMREAD_LOAD_GDAL) != IMREAD_LOAD_GDAL && flags != IMREAD_UNCHANGED )
+    {
+        if( (flags & IMREAD_ANYDEPTH) == 0 )
+            type = CV_MAKETYPE(CV_8U, CV_MAT_CN(type));
+
+        if( (flags & IMREAD_COLOR) != 0 ||
+           ((flags & IMREAD_ANYCOLOR) != 0 && CV_MAT_CN(type) > 1) )
+            type = CV_MAKETYPE(CV_MAT_DEPTH(type), 3);
+        else
+            type = CV_MAKETYPE(CV_MAT_DEPTH(type), 1);
+    }
+
+    params.mat.create( size.height, size.width, type );
+
+    // read the image data
+    bool success = false;
+    try
+    {
+        if (decoder->readData(params.mat))
+            success = true;
+    }
+    catch (const cv::Exception& e)
+    {
+        std::cerr << "imread_('" << filename << "'): can't read data: " << e.what() << std::endl << std::flush;
+        params.mat.release();
+        return ImreadError::READ_DATA_FAIL;
+    }
+    catch (...)
+    {
+        std::cerr << "imread_('" << filename << "'): can't read data: unknown exception" << std::endl << std::flush;
+        params.mat.release();
+        return ImreadError::READ_DATA_UNKNOWN_FAIL;
+    }
+    if (!success)
+    {
+        params.mat.release();
+        return ImreadError::READ_DATA_FAIL;;
+    }
+
+    if( decoder->setScale( scale_denom ) > 1 ) // if decoder is JpegDecoder then decoder->setScale always returns 1
+    {
+        resize( params.mat, params.mat, Size( size.width / scale_denom, size.height / scale_denom ), 0, 0, INTER_LINEAR_EXACT);
+    }
+
+    /// optionally rotate the data if EXIF orientation flag says so
+    if (!params.mat.empty() && (flags & IMREAD_IGNORE_ORIENTATION) == 0 && flags != IMREAD_UNCHANGED )
+    {
+        ApplyExifOrientation(decoder->getExifTag(ORIENTATION), params.mat);
+    }
+
+    return ImreadError::OK;
+}
+
+
 
 static bool
 imreadmulti_(const String& filename, int flags, std::vector<Mat>& mats, int start, int count)
@@ -630,18 +798,11 @@ Mat imread( const String& filename, int flags )
     return img;
 }
 
-ImreadError imread( String const& filename, ImreadParams params)
+ImreadError imreadv2( String const& filename, ImreadParams params )
 {
     CV_TRACE_FUNCTION();
 
-    if(params.images.isVector())
-    {
-
-    }
-    else
-    {
-        
-    }
+    return imread_v2(filename, params);
     
 }
 

@@ -303,4 +303,78 @@ TEST(Imgcodecs_Image, write_umat)
     EXPECT_EQ(0, remove(dst_name.c_str()));
 }
 
+TEST(ImgCodecs_Imread, read_signature_fail)
+{
+    const string root = cvtest::TS::ptr()->get_data_path();
+    const string filename = root + "../highgui/pngsuite/xcrn0g04.png";
+
+    cv::Mat m;
+    ImreadParams params{m};
+    ImreadError err = imreadv2(filename, params);
+    EXPECT_EQ(err, ImreadError::CODEC_SIGNATURE_FAIL);
+}
+
+TEST(ImgCodecs_Imread, read_header_fail)
+{
+    const string root = cvtest::TS::ptr()->get_data_path();
+    const string filename = root + "../highgui/pngsuite/xd0n2c08.png";
+
+    cv::Mat m;
+ImreadParams params{m};
+    ImreadError err = imreadv2(filename, params);
+    EXPECT_EQ(err, ImreadError::READ_HEADER_FAIL);
+    EXPECT_TRUE(params.mat.empty());
+}
+/*
+TEST(ImgCodecs_Imread, read_data_fail)
+{
+    const string root = cvtest::TS::ptr()->get_data_path();
+    const string filename = root + "../highgui/pngsuite/xcsn0g01.png";
+
+    cv::Mat m;
+    ImreadParams params{m, IMREAD_COLOR};
+    ImreadError err = imreadv2(filename, params);
+    EXPECT_EQ(err, ImreadError::READ_DATA_FAIL);
+    EXPECT_TRUE(m.empty());
+}*/
+
+TEST(ImgCodecs_Imread, file_not_found)
+{
+    const string root = cvtest::TS::ptr()->get_data_path();
+    const string filename = root + "../highgui/pngsuite/file_not_found.png";
+
+    cv::Mat m;
+    ImreadParams params{m};
+    ImreadError err = imreadv2(filename, params);
+    EXPECT_EQ(err, ImreadError::FILE_NOT_FOUND);
+    EXPECT_TRUE(params.mat.empty());
+}
+
+TEST(ImgCodecs_Imread, max_size_exceed)
+{
+    const string root = cvtest::TS::ptr()->get_data_path();
+    const string filename = root + "../perf/2560x1600.png";
+
+    cv::Mat m;
+    ImreadParams params{m};
+    params.maxSize = cv::Size(1920,1080);
+    ImreadError err = imreadv2(filename, params);
+    EXPECT_EQ(err, ImreadError::SIZE_LIMIT_EXCEED);
+    EXPECT_TRUE(params.mat.empty());
+}
+
+TEST(ImgCodecs_Imread, read_success)
+{
+    const string root = cvtest::TS::ptr()->get_data_path();
+    const string filename = root + "../cv/shared/baboon.png";
+
+    cv::Mat m;
+    //ImreadParams params{mat};
+    
+    // Example usage after C++20
+    ImreadError err = imreadv2(filename, {.mat = m, .flags = IMREAD_COLOR});
+    EXPECT_EQ(err, ImreadError::OK);
+    EXPECT_FALSE(m.empty());
+}
+
 }} // namespace

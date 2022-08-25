@@ -163,17 +163,20 @@ enum ImwritePAMFlags {
 //! @} imgcodecs_flags
 
 enum class ImreadError {
-      OK,
-      UNKNOWN_FILE_TYPE,
+      OK = 0,
+      FILE_NOT_FOUND,
+      CODEC_SIGNATURE_FAIL,
       SIZE_LIMIT_EXCEED,
       READ_HEADER_FAIL,
       READ_DATA_FAIL,
+      READ_HEADER_UNKNOWN_FAIL,
+      READ_DATA_UNKNOWN_FAIL,
      };
 
 struct ImreadParams {
-      cv::Size maxSize {0, 0};
-      int flags = 0;
-      OutputArray images;
+      cv::Mat& mat;
+      int flags;
+      cv::Size maxSize;
      };
 
 /** @brief Loads an image from a file.
@@ -229,7 +232,7 @@ Currently, the following file formats are supported:
 */
 CV_EXPORTS_W Mat imread( const String& filename, int flags = IMREAD_COLOR );
 
-CV_EXPORTS_W ImreadError imread( String const& filename, ImreadParams params);
+CV_EXPORTS_W ImreadError imreadv2( String const& filename, ImreadParams params);
 
 /** @brief Loads a multi-page image from a file.
 

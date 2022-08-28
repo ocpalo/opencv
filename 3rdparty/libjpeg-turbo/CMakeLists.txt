@@ -143,6 +143,22 @@ if(WITH_ARITH_DEC)
   set(JPEG_SOURCES ${JPEG_SOURCES} jdarith.c)
 endif()
 
+if(MSVC)
+  option(WITH_CRT_DLL
+    "Link all ${CMAKE_PROJECT_NAME} libraries and executables with the C run-time DLL (msvcr*.dll) instead of the static C run-time library (libcmt*.lib.)  The default is to use the C run-time DLL only with the libraries and executables that need it."
+    FALSE)
+  if(NOT WITH_CRT_DLL)
+    # Use the static C library for all build types
+    foreach(var CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
+      CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
+      if(${var} MATCHES "/MD")
+        string(REGEX REPLACE "/MD" "/MT" ${var} "${${var}}")
+      endif()
+    endforeach()
+  endif()
+  add_definitions(-D_CRT_NONSTDC_NO_WARNINGS)
+endif()
+
 if(WITH_LIBJPEG_TURBO_SIMD AND CMAKE_ASM_NASM_COMPILER)
   option(WITH_SIMD "Include SIMD extensions, if available for this platform" TRUE)
   set(WITH_SIMD 1)

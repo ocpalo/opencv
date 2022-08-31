@@ -137,15 +137,6 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)  # https://cmake.org/cmake/help/
   endif()
 endif()
 
-if(BUILD_JPEG AND WITH_LIBJEG_TURBO_SIMD)
-  if(NOT DEFINED CMAKE_ASM_NASM_COMPILER AND DEFINED ENV{ASM_NASM})
-    set(CMAKE_ASM_NASM_COMPILER $ENV{ASM_NASM})
-  endif()
-endif()
-
-include(CheckLanguage)
-check_language(ASM_NASM)
-
 enable_testing()
 
 project(OpenCV CXX C)
@@ -1350,10 +1341,8 @@ if(WITH_JPEG OR HAVE_JPEG)
     status("    JPEG:" NO)
   elseif(BUILD_JPEG)
     status("    JPEG:" "build-${JPEG_LIBRARY} (ver ${JPEG_LIB_VERSION})")
-    if(WITH_SIMD)
-      if(CMAKE_ASM_NASM_COMPILER)
-        status("        SIMD Support:" "YES")
-      endif()
+    if(WITH_SIMD AND CMAKE_ASM_NASM_COMPILER)
+      status("        SIMD Support:" "YES")
     else()
       status("        SIMD Support:" "NO")
     endif()

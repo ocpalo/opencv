@@ -60,7 +60,8 @@ message(STATUS "${BITS}-bit build (${CPU_TYPE})")
 
 option(WITH_ARITH_ENC "Include arithmetic encoding support when emulating the libjpeg v6b API/ABI" TRUE)
 option(WITH_ARITH_DEC "Include arithmetic decoding support when emulating the libjpeg v6b API/ABI" TRUE)
-option(WITH_LIBJPEG_TURBO_SIMD "Include SIMD extensions, if available for this platform" TRUE )
+option(WITH_SIMD "Include SIMD extensions, if available for this platform" TRUE )
+set(WITH_SIMD 1)
 
 include(CheckCSourceCompiles)
 include(CheckIncludeFiles)
@@ -159,31 +160,29 @@ if(MSVC)
   add_definitions(-D_CRT_NONSTDC_NO_WARNINGS)
 endif()
 
-if(WITH_LIBJPEG_TURBO_SIMD AND CMAKE_ASM_NASM_COMPILER)
-  option(WITH_SIMD "Include SIMD extensions, if available for this platform" TRUE)
-  set(WITH_SIMD 1)
-  add_subdirectory(${PROJECT_SOURCE_DIR}/src/simd)
+if(WITH_SIMD)
+  add_subdirectory(src/simd)
   if(NEON_INTRINSICS)
     add_definitions(-DNEON_INTRINSICS)
   endif()
-
-  message(STATUS "SIMD extensions: ${CPU_TYPE} (WITH_LIBJPEG_TURBO_SIMD = ${WITH_LIBJPEG_TURBO_SIMD})")
+endif()
+if(WITH_SIMD)
+  message(STATUS "SIMD extensions: ${CPU_TYPE} (WITH_SIMD = ${WITH_SIMD})")
   if(MSVC_IDE OR XCODE)
     set_source_files_properties(${SIMD_OBJS} PROPERTIES GENERATED 1)
   endif()
 else()
-  add_library(simd OBJECT src/jsimd_none.c)
+  add_library(simd OBJECT jsimd_none.c)
   if(NOT WIN32 AND (CMAKE_POSITION_INDEPENDENT_CODE OR ENABLE_SHARED))
     set_target_properties(simd PROPERTIES POSITION_INDEPENDENT_CODE 1)
   endif()
 endif()
 
-ocv_list_add_prefix(JPEG_SOURCES src/)
-
 set(JPEG_SOURCES ${JPEG_SOURCES} ${SIMD_OBJS})
 
-add_library(${JPEG_LIBRARY} STATIC ${OPENCV_3RDPARTY_EXCLUDE_FROM_ALL} ${JPEG_SOURCES} $<TARGET_OBJECTS:simd>
-        ${SIMD_OBJS})
+ocv_list_add_prefix(JPEG_SOURCES src/)
+
+add_library(${JPEG_LIBRARY} STATIC ${OPENCV_3RDPARTY_EXCLUDE_FROM_ALL} ${JPEG_SOURCES} $<TARGET_OBJECTS:simd> ${SIMD_OBJS})
 
 set_target_properties(${JPEG_LIBRARY}
         PROPERTIES OUTPUT_NAME ${JPEG_LIBRARY}

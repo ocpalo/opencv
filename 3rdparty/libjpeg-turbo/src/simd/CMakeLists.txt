@@ -1,6 +1,5 @@
 macro(simd_fail message)
     message(WARNING "${message}.  Performance will suffer.")
-    set(WITH_LIBJPEG_TURBO_SIMD 0 PARENT_SCOPE)
     set(WITH_SIMD 0 PARENT_SCOPE)
 endmacro()
 

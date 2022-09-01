@@ -60,7 +60,7 @@ message(STATUS "${BITS}-bit build (${CPU_TYPE})")
 
 option(WITH_ARITH_ENC "Include arithmetic encoding support when emulating the libjpeg v6b API/ABI" TRUE)
 option(WITH_ARITH_DEC "Include arithmetic decoding support when emulating the libjpeg v6b API/ABI" TRUE)
-option(WITH_SIMD "Include SIMD extensions, if available for this platform" TRUE )
+option(WITH_LIBJEG_TURBO_SIMD "Include SIMD extensions, if available for this platform" TRUE )
 set(WITH_SIMD 1)
 
 include(CheckCSourceCompiles)
@@ -160,7 +160,7 @@ if(MSVC)
   add_definitions(-D_CRT_NONSTDC_NO_WARNINGS)
 endif()
 
-if(WITH_SIMD)
+if(WITH_LIBJEG_TURBO_SIMD)
   add_subdirectory(src/simd)
   if(NEON_INTRINSICS)
     add_definitions(-DNEON_INTRINSICS)

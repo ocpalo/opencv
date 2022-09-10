@@ -527,7 +527,7 @@ imreadmulti_(const String& filename, int flags, std::vector<Mat>& mats, int star
 
     try{
         for(size_t i = 0; i < (size_t)count && i < collection.size(); ++i) {
-            mats.push_back(*iter);
+            mats.push_back(std::move(*iter));
             iter++;
         }
     } catch (const cv::Exception& e)

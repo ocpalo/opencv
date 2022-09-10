@@ -166,7 +166,6 @@ if(WITH_LIBJPEG_TURBO_SIMD)
     add_definitions(-DNEON_INTRINSICS)
   endif()
 else()
-  set(WITH_LIBJPEG_TURBO_SIMD 0 PARENT_SCOPE)
   set(WITH_SIMD 0)
 endif()
 

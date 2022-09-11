@@ -113,6 +113,17 @@ set(JPEG_LIB_VERSION "${VERSION}-${JPEG_LIB_VERSION}" PARENT_SCOPE)
 
 set(THREAD_LOCAL "")  # WITH_TURBOJPEG is not used
 
+if(X86_64)
+  if(NOT "${CPU_BASELINE_FINAL}" MATCHES "SSE2|AVX2" OR NOT "${CPU_DISPATCH}" MATCHES "SSE2|AVX2")
+    set(WITH_SIMD 0)
+  endif()
+endif()
+if(X86)
+  if(NOT "${CPU_BASELINE_FINAL}" MATCHES "MMX|AVX2|SSE2" OR NOT "${CPU_DISPATCH}" MATCHES "MMX|AVX2|SSE2")
+    set(WITH_SIMD 0)
+  endif()
+endif()
+
 if(MSVC)
   add_definitions(-W3 -wd4996 -wd4018)
 endif()
@@ -186,7 +197,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "SunOS")
 endif()
 
 message(STATUS ${WITH_LIBJPEG_TURBO_SIMD})
-if(ENABLE_LIBJPEG_TURBO_SIMD)
+if(ENABLE_LIBJPEG_TURBO_SIMD AND WITH_SIMD)
   add_subdirectory(src/simd)
   if(NEON_INTRINSICS)
     add_definitions(-DNEON_INTRINSICS)

@@ -309,8 +309,6 @@ OCV_OPTION(WITH_OPENJPEG "Include JPEG2K support (OpenJPEG)" ON
 OCV_OPTION(WITH_JPEG "Include JPEG support" ON
   VISIBLE_IF TRUE
   VERIFY HAVE_JPEG)
-OCV_OPTION(WITH_LIBJPEG_TURBO_SIMD "Include SIMD extensions for libjpeg-turbo, if available for this platform" (NOT CV_DISABLE_OPTIMIZATION)
-  VISIBLE_IF BUILD_JPEG)
 OCV_OPTION(WITH_WEBP "Include WebP support" ON
   VISIBLE_IF NOT WINRT
   VERIFY HAVE_WEBP)
@@ -1343,10 +1341,15 @@ if(WITH_JPEG OR HAVE_JPEG)
     status("    JPEG:" NO)
   elseif(BUILD_JPEG)
     status("    JPEG:" "build-${JPEG_LIBRARY} (ver ${JPEG_LIB_VERSION})")
-    if(WITH_LIBJPEG_TURBO_SIMD)
-      status("        SIMD Support:" "YES")
+    if(ENABLE_LIBJPEG_TURBO_SIMD)
+      status("        SIMD Support Request:" "YES")
+      if(IS_LIBJPEG_TURBO_SIMD_AVAILABLE)
+        status("        SIMD Support:" "YES")
+      else()
+        status("        SIMD Support:" "NO")
+      endif()
     else()
-      status("        SIMD Support:" "NO")
+      status("        SIMD Support Request:" "NO")
     endif()
   else()
     status("    JPEG:" "${JPEG_LIBRARY} (ver ${JPEG_LIB_VERSION})")

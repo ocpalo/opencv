@@ -393,10 +393,14 @@ TEST(Imgcodecs_Image, multipage_collection_backward_decoding)
     };
 
     ImageCollection collection(filename, IMREAD_ANYCOLOR);
+    EXPECT_EQ((size_t)6, collection.size());
+
     // backward decoding -> 5,4,3,2,1,0
     for(int i = (int)collection.size() - 1; i >= 0; --i)
     {
-        double diff = cv::norm(collection[i], imread(page_files[i]), NORM_INF);
+        cv::Mat ithPage = imread(page_files[i]);
+        EXPECT_FALSE(ithPage.empty());
+        double diff = cv::norm(collection[i], ithPage, NORM_INF);
         EXPECT_EQ(diff, 0.);
     }
 
@@ -409,7 +413,7 @@ TEST(Imgcodecs_Image, multipage_collection_backward_decoding)
     EXPECT_EQ(diff, 0.);
 }
 
-TEST(ImgCodecs, multipage_decoding_range_based_for_loop_test)
+TEST(ImgCodecs, multipage_collection_decoding_range_based_for_loop_test)
 {
     const string root = cvtest::TS::ptr()->get_data_path();
     const string filename = root + "readwrite/multipage.tif";
@@ -427,18 +431,24 @@ TEST(ImgCodecs, multipage_decoding_range_based_for_loop_test)
     int index = 0;
     for(auto &i: collection)
     {
-        double diff = cv::norm(i, imread(page_files[index]), NORM_INF);
+        cv::Mat ithPage = imread(page_files[index]);
+        EXPECT_FALSE(ithPage.empty());
+        double diff = cv::norm(i, ithPage, NORM_INF);
         EXPECT_EQ(0., diff);
         ++index;
     }
+    EXPECT_EQ((size_t)index, collection.size());
 
     index = 0;
     for(auto &&i: collection)
     {
-        double diff = cv::norm(i, imread(page_files[index]), NORM_INF);
+        cv::Mat ithPage = imread(page_files[index]);
+        EXPECT_FALSE(ithPage.empty());
+        double diff = cv::norm(i, ithPage, NORM_INF);
         EXPECT_EQ(0., diff);
         ++index;
     }
+    EXPECT_EQ((size_t)index, collection.size());
 }
 
 }} // namespace

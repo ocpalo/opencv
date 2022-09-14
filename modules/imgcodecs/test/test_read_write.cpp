@@ -451,4 +451,128 @@ TEST(ImgCodecs, multipage_collection_decoding_range_based_for_loop_test)
     EXPECT_EQ((size_t)index, collection.size());
 }
 
+TEST(ImgCodecs, multipage_collection_two_iterator_test)
+{
+    const string root = cvtest::TS::ptr()->get_data_path();
+    const string filename = root + "readwrite/multipage.tif";
+    const string page_files[] = {
+            root + "readwrite/multipage_p1.tif",
+            root + "readwrite/multipage_p2.tif",
+            root + "readwrite/multipage_p3.tif",
+            root + "readwrite/multipage_p4.tif",
+            root + "readwrite/multipage_p5.tif",
+            root + "readwrite/multipage_p6.tif"
+    };
+
+    ImageCollection collection(filename, IMREAD_ANYCOLOR);
+
+    auto firstIter = collection.begin();
+    auto secondIter = collection.begin();
+
+    auto firstPage = *firstIter;
+    auto secondPage = *(++firstIter);
+    auto thirdPage = *(++firstIter);
+
+    cv::Mat fPage = imread(page_files[0]);
+    EXPECT_FALSE(fPage.empty());
+    double diff = cv::norm(firstPage, fPage, NORM_INF);
+    EXPECT_EQ(0., diff);
+
+    cv::Mat sPage = imread(page_files[1]);
+    EXPECT_FALSE(fPage.empty());
+    diff = cv::norm(secondPage, sPage, NORM_INF);
+    EXPECT_EQ(0., diff);
+
+    cv::Mat tPage = imread(page_files[2]);
+    EXPECT_FALSE(fPage.empty());
+    diff = cv::norm(thirdPage, tPage, NORM_INF);
+    EXPECT_EQ(0., diff);
+
+    // Advance the second iter then decode last 3 page
+    for(int i = 0; i < 3; ++i)
+    {
+        secondIter++;
+    }
+
+    auto fourthPage = *secondIter;
+    auto fifthPage = *(++secondIter);
+    auto lastPage = *(++secondIter);
+
+    cv::Mat f2Page = imread(page_files[3]);
+    EXPECT_FALSE(fPage.empty());
+    diff = cv::norm(fourthPage, f2Page, NORM_INF);
+    EXPECT_EQ(0., diff);
+
+    cv::Mat s2Page = imread(page_files[4]);
+    EXPECT_FALSE(fPage.empty());
+    diff = cv::norm(fifthPage, s2Page, NORM_INF);
+    EXPECT_EQ(0., diff);
+
+    cv::Mat t2Page = imread(page_files[5]);
+    EXPECT_FALSE(fPage.empty());
+    diff = cv::norm(lastPage, t2Page, NORM_INF);
+    EXPECT_EQ(0., diff);
+}
+
+TEST(ImgCodecs, multipage_collection_two_iterator_test_2)
+{
+    const string root = cvtest::TS::ptr()->get_data_path();
+    const string filename = root + "readwrite/multipage.tif";
+    const string page_files[] = {
+            root + "readwrite/multipage_p1.tif",
+            root + "readwrite/multipage_p2.tif",
+            root + "readwrite/multipage_p3.tif",
+            root + "readwrite/multipage_p4.tif",
+            root + "readwrite/multipage_p5.tif",
+            root + "readwrite/multipage_p6.tif"
+    };
+
+    ImageCollection collection(filename, IMREAD_ANYCOLOR);
+
+    auto firstIter = collection.begin();
+
+    auto firstPage = *firstIter;
+    auto secondPage = *(++firstIter);
+    auto thirdPage = *(++firstIter);
+
+    cv::Mat fPage = imread(page_files[0]);
+    EXPECT_FALSE(fPage.empty());
+    double diff = cv::norm(firstPage, fPage, NORM_INF);
+    EXPECT_EQ(0., diff);
+
+    cv::Mat sPage = imread(page_files[1]);
+    EXPECT_FALSE(fPage.empty());
+    diff = cv::norm(secondPage, sPage, NORM_INF);
+    EXPECT_EQ(0., diff);
+
+    cv::Mat tPage = imread(page_files[2]);
+    EXPECT_FALSE(fPage.empty());
+    diff = cv::norm(thirdPage, tPage, NORM_INF);
+    EXPECT_EQ(0., diff);
+
+    // create a copy of the first iterator
+    auto secondIter = firstIter;
+    secondIter++;
+    
+
+    auto fourthPage = *secondIter;
+    auto fifthPage = *(++secondIter);
+    auto lastPage = *(++secondIter);
+
+    cv::Mat f2Page = imread(page_files[3]);
+    EXPECT_FALSE(fPage.empty());
+    diff = cv::norm(fourthPage, f2Page, NORM_INF);
+    EXPECT_EQ(0., diff);
+
+    cv::Mat s2Page = imread(page_files[4]);
+    EXPECT_FALSE(fPage.empty());
+    diff = cv::norm(fifthPage, s2Page, NORM_INF);
+    EXPECT_EQ(0., diff);
+
+    cv::Mat t2Page = imread(page_files[5]);
+    EXPECT_FALSE(fPage.empty());
+    diff = cv::norm(lastPage, t2Page, NORM_INF);
+    EXPECT_EQ(0., diff);
+}
+
 }} // namespace
